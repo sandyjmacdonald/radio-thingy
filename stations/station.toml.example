@@ -1,0 +1,305 @@
+# Example Radio Station Configuration
+# Copy this file and customize it for your station
+# Example: cp station.toml.example MYCALL.toml
+
+# ============================================================================
+# BASIC STATION INFO
+# ============================================================================
+
+name = "MYCALL"    # Station call letters/name (e.g., KXYZ, WABC)
+freq = 99.9        # FM frequency
+
+# ============================================================================
+# MEDIA DIRECTORIES
+# ============================================================================
+
+# Directory containing station identification audio files (MP3)
+# These are short clips that identify your station
+idents_dir = "/path/to/media/idents/MYCALL"
+
+# Directory containing commercial/advertisement audio files (MP3)
+commercials_dir = "/path/to/media/commercials/MYCALL"
+
+# ============================================================================
+# COMMERCIAL BREAK CONFIGURATION
+# ============================================================================
+
+# How often to trigger a commercial break (in seconds)
+# 900 = 15 minutes, 1800 = 30 minutes
+break_frequency_s = 900
+
+# Target length of commercial break (in seconds)
+# The scheduler will try to fill this time with ident + commercials
+break_length_s = 60
+
+# ============================================================================
+# STATION IDENT OVERLAY CONFIGURATION
+# ============================================================================
+
+# How often to overlay a station ident on top of a song (in seconds)
+# 180 = 3 minutes, 300 = 5 minutes
+ident_frequency_s = 180
+
+# How many seconds into the song to start the ident overlay
+ident_pad_s = 2.0
+
+# Volume reduction factor for music when ident is playing (0.0-1.0)
+# 0.4 = music plays at 40% volume during ident
+ident_duck = 0.4
+
+# How long the volume fade takes (in seconds)
+ident_ramp_s = 0.5
+
+# ============================================================================
+# PROGRAMMING SCHEDULE
+# ============================================================================
+# Format: hour = { tags = "genre" } or { tags = ["genre1", "genre2"] }
+# Hours are 0-23 (24-hour format)
+# Tags correspond to subdirectory names in your music library
+#
+# NEW: Interstitials support
+# - interstitials = "path/to/directory" (directory with interstitial MP3s)
+# - interstitials_probability = 0.0-1.0 (chance of playing between songs)
+#   * 0.0 = never play
+#   * 1.0 = always play after every song
+#   * 0.3 = 30% chance after each song
+
+[schedule.monday]
+# Early morning - calm music, occasional promos
+0 = { tags = "ambient" }
+1 = { tags = "ambient" }
+2 = { tags = "ambient" }
+3 = { tags = "ambient" }
+4 = { tags = "ambient" }
+5 = { tags = "ambient" }
+
+# Morning drive - upbeat music with frequent station promos
+6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+
+# Mid-morning - mixed content with occasional announcements
+9 = { tags = ["pop", "rock"], interstitials = "/path/to/interstitials/general", interstitials_probability = 0.2 }
+10 = { tags = ["pop", "rock"], interstitials = "/path/to/interstitials/general", interstitials_probability = 0.2 }
+11 = { tags = ["pop", "rock"] }
+
+# Lunch time - upbeat mix
+12 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/midday", interstitials_probability = 0.3 }
+13 = { tags = ["pop", "dance"] }
+
+# Afternoon - variety
+14 = { tags = ["rock", "indie"] }
+15 = { tags = ["rock", "indie"] }
+16 = { tags = ["rock", "indie"] }
+
+# Evening drive - energetic rock with promos
+17 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 0.4 }
+18 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 0.4 }
+19 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 0.4 }
+
+# Prime time - special programming with guaranteed interstitials
+20 = { tags = ["rock", "classic"], interstitials = "/path/to/interstitials/primetime", interstitials_probability = 1.0 }
+21 = { tags = ["rock", "classic"], interstitials = "/path/to/interstitials/primetime", interstitials_probability = 1.0 }
+
+# Late night - chill vibes, no interruptions
+22 = { tags = "chill" }
+23 = { tags = "chill" }
+
+[schedule.tuesday]
+# You can copy-paste from Monday or customize each day
+0 = { tags = "ambient" }
+1 = { tags = "ambient" }
+2 = { tags = "ambient" }
+3 = { tags = "ambient" }
+4 = { tags = "ambient" }
+5 = { tags = "ambient" }
+6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+9 = { tags = ["pop", "rock"] }
+10 = { tags = ["pop", "rock"] }
+11 = { tags = ["pop", "rock"] }
+12 = { tags = ["pop", "dance"] }
+13 = { tags = ["pop", "dance"] }
+14 = { tags = ["rock", "indie"] }
+15 = { tags = ["rock", "indie"] }
+16 = { tags = ["rock", "indie"] }
+17 = { tags = "rock" }
+18 = { tags = "rock" }
+19 = { tags = "rock" }
+20 = { tags = ["rock", "classic"] }
+21 = { tags = ["rock", "classic"] }
+22 = { tags = "chill" }
+23 = { tags = "chill" }
+
+[schedule.wednesday]
+# Wednesday - "New Music Wednesday" with special promos
+0 = { tags = "ambient" }
+1 = { tags = "ambient" }
+2 = { tags = "ambient" }
+3 = { tags = "ambient" }
+4 = { tags = "ambient" }
+5 = { tags = "ambient" }
+6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+9 = { tags = "indie", interstitials = "/path/to/interstitials/newmusic", interstitials_probability = 0.7 }
+10 = { tags = "indie", interstitials = "/path/to/interstitials/newmusic", interstitials_probability = 0.7 }
+11 = { tags = "indie", interstitials = "/path/to/interstitials/newmusic", interstitials_probability = 0.7 }
+12 = { tags = ["pop", "dance"] }
+13 = { tags = ["pop", "dance"] }
+14 = { tags = ["rock", "indie"] }
+15 = { tags = ["rock", "indie"] }
+16 = { tags = ["rock", "indie"] }
+17 = { tags = "rock" }
+18 = { tags = "rock" }
+19 = { tags = "rock" }
+20 = { tags = ["rock", "classic"] }
+21 = { tags = ["rock", "classic"] }
+22 = { tags = "chill" }
+23 = { tags = "chill" }
+
+[schedule.thursday]
+0 = { tags = "ambient" }
+1 = { tags = "ambient" }
+2 = { tags = "ambient" }
+3 = { tags = "ambient" }
+4 = { tags = "ambient" }
+5 = { tags = "ambient" }
+6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+9 = { tags = ["pop", "rock"] }
+10 = { tags = ["pop", "rock"] }
+11 = { tags = ["pop", "rock"] }
+12 = { tags = ["pop", "dance"] }
+13 = { tags = ["pop", "dance"] }
+14 = { tags = ["rock", "indie"] }
+15 = { tags = ["rock", "indie"] }
+16 = { tags = ["rock", "indie"] }
+17 = { tags = "rock" }
+18 = { tags = "rock" }
+19 = { tags = "rock" }
+20 = { tags = ["rock", "classic"] }
+21 = { tags = ["rock", "classic"] }
+22 = { tags = "chill" }
+23 = { tags = "chill" }
+
+[schedule.friday]
+# Friday - Party mode with more dance music and promos
+0 = { tags = "ambient" }
+1 = { tags = "ambient" }
+2 = { tags = "ambient" }
+3 = { tags = "ambient" }
+4 = { tags = "ambient" }
+5 = { tags = "ambient" }
+6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+9 = { tags = ["pop", "dance"] }
+10 = { tags = ["pop", "dance"] }
+11 = { tags = ["pop", "dance"] }
+12 = { tags = ["pop", "dance"] }
+13 = { tags = ["pop", "dance"] }
+14 = { tags = ["pop", "dance"] }
+15 = { tags = ["pop", "dance"] }
+16 = { tags = ["pop", "dance"] }
+17 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/weekend", interstitials_probability = 0.6 }
+18 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/weekend", interstitials_probability = 0.6 }
+19 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/weekend", interstitials_probability = 0.6 }
+20 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
+21 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
+22 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
+23 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
+
+[schedule.saturday]
+# Saturday - Relaxed weekend vibes
+0 = { tags = "dance" }
+1 = { tags = "dance" }
+2 = { tags = "chill" }
+3 = { tags = "chill" }
+4 = { tags = "chill" }
+5 = { tags = "chill" }
+6 = { tags = "chill" }
+7 = { tags = "chill" }
+8 = { tags = "chill" }
+9 = { tags = ["pop", "indie"] }
+10 = { tags = ["pop", "indie"] }
+11 = { tags = ["pop", "indie"] }
+12 = { tags = ["pop", "rock"] }
+13 = { tags = ["pop", "rock"] }
+14 = { tags = ["pop", "rock"] }
+15 = { tags = ["pop", "rock"] }
+16 = { tags = "rock" }
+17 = { tags = "rock" }
+18 = { tags = "rock" }
+19 = { tags = ["rock", "dance"] }
+20 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
+21 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
+22 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
+23 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
+
+[schedule.sunday]
+# Sunday - Mellow and chill
+0 = { tags = "dance" }
+1 = { tags = "chill" }
+2 = { tags = "chill" }
+3 = { tags = "chill" }
+4 = { tags = "chill" }
+5 = { tags = "chill" }
+6 = { tags = "chill" }
+7 = { tags = "chill" }
+8 = { tags = "chill" }
+9 = { tags = "ambient" }
+10 = { tags = "ambient" }
+11 = { tags = "ambient" }
+12 = { tags = ["jazz", "ambient"] }
+13 = { tags = ["jazz", "ambient"] }
+14 = { tags = "jazz" }
+15 = { tags = "jazz" }
+16 = { tags = "jazz" }
+17 = { tags = ["jazz", "soul"] }
+18 = { tags = ["jazz", "soul"] }
+19 = { tags = "chill" }
+20 = { tags = "chill" }
+21 = { tags = "chill" }
+22 = { tags = "chill" }
+23 = { tags = "ambient" }
+
+# ============================================================================
+# NOTES
+# ============================================================================
+#
+# Music Library Structure:
+# Your music should be organized in subdirectories by tag/genre:
+#   /path/to/music/
+#   ├── pop/
+#   │   ├── Artist - Song1.mp3
+#   │   └── Artist - Song2.mp3
+#   ├── rock/
+#   ├── jazz/
+#   ├── ambient/
+#   └── etc/
+#
+# Interstitials Directory Structure:
+#   /path/to/interstitials/
+#   ├── morning/
+#   │   ├── morning-promo-1.mp3
+#   │   └── morning-promo-2.mp3
+#   ├── evening/
+#   │   ├── evening-intro.mp3
+#   │   └── evening-announcement.mp3
+#   └── party/
+#       ├── party-hype.mp3
+#       └── weekend-special.mp3
+#
+# Interstitials Probability Examples:
+#   - 0.0 = Never play interstitials
+#   - 0.2 = 20% chance (roughly 1 in 5 songs)
+#   - 0.5 = 50% chance (every other song on average)
+#   - 1.0 = Always play after every song
+#
+# After creating your station config, scan it with:
+#   python -m radio.scan_media --db /path/to/radio.db \
+#     --music /path/to/music --stations stations/MYCALL.toml
+
