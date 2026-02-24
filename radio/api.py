@@ -71,8 +71,7 @@ def _build_now_playing_and_up_next(
 def create_api(app: RadioApp) -> FastAPI:
     fastapi_app = FastAPI()
 
-    @fastapi_app.get("/status")
-    def status(station: Optional[str] = None) -> dict[str, Any]:
+    def _get_status(station: Optional[str] = None) -> dict[str, Any]:
         # Read tuning state under lock
         with app._lock:
             dial_freq = app.state.freq
@@ -122,5 +121,42 @@ def create_api(app: RadioApp) -> FastAPI:
         row = helpers.get_station_state(app.con, sid)
         now_playing, up_next = _build_now_playing_and_up_next(app.con, row)
         return {**base, "now_playing": now_playing, "up_next": up_next}
+
+    @fastapi_app.get("/stations")
+    def stations_list() -> list[dict[str, Any]]:
+        """Return all stations sorted by frequency."""
+        return [{"name": name, "frequency": freq} for name, freq in app.sts]
+
+    @fastapi_app.get("/status")
+    def status(station: Optional[str] = None) -> dict[str, Any]:
+        return _get_status(station)
+
+    @fastapi_app.post("/tune")
+    def tune(
+        station: Optional[str] = None,
+        frequency: Optional[float] = None,
+    ) -> dict[str, Any]:
+        """Tune the dial to a station by name or to an exact frequency."""
+        if station is not None and frequency is not None:
+            raise HTTPException(
+                status_code=400, detail="Provide either station or frequency, not both"
+            )
+
+        if station is not None:
+            if station not in app.station_cfgs:
+                raise HTTPException(status_code=404, detail=f"Station not found: {station}")
+            target_freq = float(app.station_cfgs[station].freq)
+        elif frequency is not None:
+            target_freq = frequency
+        else:
+            raise HTTPException(
+                status_code=400, detail="Provide either station or frequency"
+            )
+
+        with app._lock:
+            current_freq = app.state.freq
+
+        app.tune(target_freq - current_freq)
+        return _get_status()
 
     return fastapi_app
