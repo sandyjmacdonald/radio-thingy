@@ -7,11 +7,10 @@ import threading
 from dataclasses import dataclass
 from typing import Optional
 
-from gpiozero import Button
-
 import uvicorn
 
 from .db import connect
+from .input import TuneInput, GpioButtonInput
 from .station_config import load_station_toml, StationConfig
 from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
@@ -116,7 +115,7 @@ class TuningState:
 class RadioApp:
     """Main radio application coordinating the scheduler, player, and GPIO input."""
 
-    def __init__(self):
+    def __init__(self, inputs: list[TuneInput] | None = None):
         # Load station configs
         paths = sorted(glob.glob(STATION_TOMLS_GLOB))
         if not paths:
@@ -145,11 +144,10 @@ class RadioApp:
         # tuning state
         self.state = TuningState(freq=90.0)
 
-        # input buttons
-        self.btn_down = Button(BTN_DOWN, pull_up=True, bounce_time=0.05)
-        self.btn_up = Button(BTN_UP, pull_up=True, bounce_time=0.05)
-        self.btn_down.when_pressed = lambda: self.tune(-STEP)
-        self.btn_up.when_pressed = lambda: self.tune(+STEP)
+        # input devices
+        self._inputs = inputs if inputs is not None else [GpioButtonInput(BTN_DOWN, BTN_UP, STEP)]
+        for inp in self._inputs:
+            inp.start(self.tune)
 
         # lock for tune() calls (gpio callbacks are threaded)
         self._lock = threading.Lock()
@@ -246,6 +244,11 @@ class RadioApp:
         except KeyboardInterrupt:
             pass
         finally:
+            for inp in self._inputs:
+                try:
+                    inp.stop()
+                except Exception:
+                    pass
             try:
                 self.player.stop()
             except Exception:
