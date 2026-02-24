@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from fastapi import FastAPI, HTTPException
 
 from . import helpers
+from .db import connect
 
 if TYPE_CHECKING:
     from .radio import RadioApp
@@ -70,6 +71,7 @@ def _build_now_playing_and_up_next(
 
 def create_api(app: RadioApp) -> FastAPI:
     fastapi_app = FastAPI()
+    con = connect(app.config.db_path)
 
     def _get_status(station: Optional[str] = None) -> dict[str, Any]:
         # Read tuning state under lock
@@ -93,12 +95,12 @@ def create_api(app: RadioApp) -> FastAPI:
             }
 
             try:
-                sid = helpers.station_id(app.con, station)
+                sid = helpers.station_id(con, station)
             except RuntimeError:
                 return {**base, "now_playing": None, "up_next": None}
 
-            row = helpers.get_station_state(app.con, sid)
-            now_playing, up_next = _build_now_playing_and_up_next(app.con, row)
+            row = helpers.get_station_state(con, sid)
+            now_playing, up_next = _build_now_playing_and_up_next(con, row)
             return {**base, "now_playing": now_playing, "up_next": up_next}
 
         # --- Current tuning state ---
@@ -114,12 +116,12 @@ def create_api(app: RadioApp) -> FastAPI:
             return {**base, "now_playing": None, "up_next": None}
 
         try:
-            sid = helpers.station_id(app.con, current_station)
+            sid = helpers.station_id(con, current_station)
         except RuntimeError:
             return {**base, "now_playing": None, "up_next": None}
 
-        row = helpers.get_station_state(app.con, sid)
-        now_playing, up_next = _build_now_playing_and_up_next(app.con, row)
+        row = helpers.get_station_state(con, sid)
+        now_playing, up_next = _build_now_playing_and_up_next(con, row)
         return {**base, "now_playing": now_playing, "up_next": up_next}
 
     @fastapi_app.get("/stations")
