@@ -92,4 +92,4 @@ Desktop.ini
 # Environment variables
 .env
 .env.local
-
+config.toml

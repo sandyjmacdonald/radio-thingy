@@ -1,6 +1,6 @@
 # Required: paths
-db_path            = "/home/radio/radio-code/radio.db"
-station_tomls_glob = "/home/radio/radio-code/stations/*.toml"
+db_path            = "/home/radio/radio-thingy/radio.db"
+station_tomls_glob = "/home/radio/radio-thingy/stations/*.toml"
 noise_file         = "/home/radio/media/effects/noise.mp3"
 
 # Audio output
@@ -8,7 +8,7 @@ audio_device = "pipewire"   # run WITHOUT sudo
 master_vol   = 60           # global master, 0–100
 
 # Optional radio "processing" — remove or comment out for raw audio
-radio_af = "lavfi=[highpass=f=70,lowpass=f=15000,acompressor=threshold=-20dB:ratio=4:attack=4:release=140:makeup=7:knee=6dB,alimiter=limit=0.97]"
+radio_af = "lavfi=[highpass=f=25,lowpass=f=15000,acompressor=threshold=-24dB:ratio=2.5:attack=20:release=250:makeup=5:knee=8dB,alimiter=limit=0.98]"
 
 # Dial behaviour
 freq_min    = 88.0

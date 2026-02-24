@@ -4,7 +4,7 @@ from radio.config import load_config
 from radio.input import GpioButtonInput
 from radio.radio import RadioApp
 
-CONFIG_PATH = "/home/radio/radio-code/config.toml"
+CONFIG_PATH = "/home/radio/radio-thingy/config.toml"
 
 BTN_DOWN = 5
 BTN_UP = 6

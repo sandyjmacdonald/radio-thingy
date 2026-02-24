@@ -59,7 +59,7 @@ import lgpio
 print("python:", sys.version)
 print("python-mpv OK")
 print("mutagen:", mutagen.version_string)
-print("gpiozero:", gpiozero.__version__)
+print("gpiozero OK")
 print("lgpio OK")
 PY
 
