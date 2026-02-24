@@ -24,6 +24,8 @@ def scale(vol_0_100: int, master_0_100: int) -> int:
 
 @dataclass
 class PlayerConfig:
+    """Configuration for the Player's three MPV instances."""
+
     audio_device: str = "pipewire"
     master_vol: int = 60  # 0-100 applied to everything
     radio_af: Optional[str] = None  # mpv af string (lavfi=...) or None
@@ -31,7 +33,9 @@ class PlayerConfig:
 
 class Player:
     """
-    Owns mpv instances:
+    Owns three MPV instances for simultaneous audio output.
+
+    Instances:
       - noise: loops constantly
       - music: single instance for program audio (song/ident/commercial)
       - ident: overlay instance (plays idents over music)
@@ -99,12 +103,10 @@ class Player:
             # un-duck smoothly
             self._start_duck_ramp(target_factor=1.0)
 
-    # ---------------- Mix control ----------------
+    # -------------------- Mix Control --------------------
 
     def set_mix(self, base_music_vol_0_100: int) -> None:
-        """
-        Crossfade between noise and music based on tuning.
-        """
+        """Crossfade between noise and music based on tuning position."""
         self._base_music_vol = clampi(base_music_vol_0_100)
         self._apply_volumes()
 
@@ -123,9 +125,10 @@ class Player:
         # ident always obey master (volume fixed at 100% * master)
         self.ident.volume = scale(100, master)
 
-    # ---------------- Main program control ----------------
+    # -------------------- Program Control --------------------
 
     def stop(self) -> None:
+        """Stop all program audio and cancel any pending ident overlay."""
         self._cancel_ident_timer()
         try:
             self.music.command("stop")
@@ -138,8 +141,9 @@ class Player:
 
     def play(self, np: NowPlaying) -> None:
         """
-        Ensure the tuned station is playing what scheduler says should be playing.
-        Uses continuity: seeks to np.seek_s for songs (and anything else if you want).
+        Ensure the tuned station is playing what the scheduler says it should be.
+
+        Seeks to np.seek_s for continuity when re-tuning mid-track.
         """
         if np.kind == "noise":
             # No program audio, just noise (mix should already be at 0 if you're not locked)
@@ -190,9 +194,7 @@ class Player:
         self._apply_volumes()
 
     def _seek_when_ready(self, target_s: float, timeout_s: float = 2.0) -> None:
-        """
-        mpv can reject immediate seek right after loadfile. We retry briefly.
-        """
+        """Seek to target_s, retrying briefly since MPV may reject seeks immediately after loadfile."""
         target_s = max(0.0, float(target_s))
         t0 = time.monotonic()
         while (time.monotonic() - t0) < timeout_s:
@@ -207,7 +209,7 @@ class Player:
                 pass
             time.sleep(0.05)
 
-    # ---------------- Ident overlay + ducking ----------------
+    # -------------------- Ident Overlay and Ducking --------------------
 
     def _cancel_ident_timer(self) -> None:
         if self._ident_timer is not None:
@@ -218,9 +220,7 @@ class Player:
             self._ident_timer = None
 
     def _schedule_overlay_ident(self, np: NowPlaying, ov: OverlayIdent) -> None:
-        """
-        Start ident at 'ov.at_s' seconds into the song (based on scheduler's started_ts).
-        """
+        """Schedule the ident to fire at ov.at_s seconds into the song."""
         self._cancel_ident_timer()
 
         # If we're already past that point, start ASAP (but still duck smoothly)
@@ -254,9 +254,7 @@ class Player:
         self._duck_ramp_s = max(0.0, float(ov.ramp_s))
 
     def _start_duck_ramp(self, target_factor: float) -> None:
-        """
-        Smoothly move duck_factor to target_factor over self._duck_ramp_s seconds.
-        """
+        """Smoothly ramp duck_factor to target_factor over self._duck_ramp_s seconds."""
         target = max(0.0, min(1.0, float(target_factor)))
         ramp_s = max(0.0, float(self._duck_ramp_s))
 

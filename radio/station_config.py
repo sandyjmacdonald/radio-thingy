@@ -1,7 +1,7 @@
 # radio/station_config.py
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -107,6 +107,8 @@ def _normalize_schedule(raw: Any) -> dict[str, dict[int, ScheduleEntry]]:
 
 @dataclass(frozen=True)
 class StationConfig:
+    """Full configuration for a single radio station, loaded from a TOML file."""
+
     name: str
     freq: float
 
@@ -125,7 +127,7 @@ class StationConfig:
     ident_ramp_s: float = 0.5
 
     # Schedule: day -> hour(int 0-23) -> ScheduleEntry
-    schedule: dict[str, dict[int, ScheduleEntry]] = None  # type: ignore
+    schedule: dict[str, dict[int, ScheduleEntry]] = field(default_factory=dict)
 
 
 def load_station_toml(path: str) -> StationConfig:

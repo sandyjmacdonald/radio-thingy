@@ -37,11 +37,11 @@ def iter_mp3(root: Path) -> Iterable[Path]:
             yield p
 
 
-def scan_songs(con, music_root: str, *, verbose: bool) -> tuple[int, int]:
+def scan_songs(con, music_root: str, *, verbose: bool) -> int:
+    """Scan the music root for MP3 files and upsert them into the media table as songs."""
     root = Path(music_root).expanduser().resolve()
-    seen = up = 0
+    n = 0
     for p in iter_mp3(root):
-        seen += 1
         tag = p.parent.name
         artist, title = parse_artist_title(p.name)
         mtime = int(p.stat().st_mtime)
@@ -59,28 +59,25 @@ def scan_songs(con, music_root: str, *, verbose: bool) -> tuple[int, int]:
                 mtime=mtime,
             ),
         )
-        # upsert_media already skips by mtime; count "new/updated" roughly by printing when changed:
-        # We can detect change by checking if mtime differs, but keep it simple:
-        # If verbose, show, else infer via rowcount? SQLite rowcount isn't reliable for UPSERT.
         if verbose:
             print(f"[song] {tag:>10}  {p.name}  ({dur:.1f}s)  id={media_id}")
-        up += 1
+        n += 1
 
     con.commit()
-    return seen, up
+    return n
 
 
-def scan_station_media_dir(con, station_id: int, directory: str, kind: str, *, verbose: bool) -> tuple[int, int]:
+def scan_station_media_dir(con, station_id: int, directory: str, kind: str, *, verbose: bool) -> int:
+    """Scan a directory for MP3s of the given kind and link them to the station."""
     if not directory:
-        return (0, 0)
+        return 0
 
     d = Path(directory).expanduser().resolve()
     if not d.exists():
-        return (0, 0)
+        return 0
 
-    seen = up = 0
+    n = 0
     for p in iter_mp3(d):
-        seen += 1
         mtime = int(p.stat().st_mtime)
         dur = duration_s(p)
         media_id = upsert_media(
@@ -98,31 +95,30 @@ def scan_station_media_dir(con, station_id: int, directory: str, kind: str, *, v
         link_station_media(con, station_id, media_id)
         if verbose:
             print(f"[{kind:<10}] {p.name} ({dur:.1f}s) id={media_id} linked->station {station_id}")
-        up += 1
+        n += 1
 
     con.commit()
-    return seen, up
+    return n
 
 
 def scan_schedule_interstitials(
     con, station_id: int, cfg: StationConfig, *, verbose: bool
-) -> dict[str, tuple[int, int]]:
+) -> dict[str, int]:
     """
     Scan all interstitial directories referenced in the schedule.
-    Returns a dict mapping schedule_key -> (seen, scanned)
+    Returns a dict mapping schedule_key -> count of files scanned.
     """
     results = {}
-    seen_dirs = set()  # avoid scanning same dir multiple times
-    
+    seen_dirs: set[str] = set()
+
     for day, hour_map in cfg.schedule.items():
         for hour, entry in hour_map.items():
             if not entry.interstitials_dir or entry.interstitials_dir in seen_dirs:
                 continue
-            
+
             seen_dirs.add(entry.interstitials_dir)
             schedule_key = f"{day}-{hour}"
-            
-            # Store metadata about this interstitial config
+
             con.execute(
                 """
                 INSERT INTO station_interstitials(
@@ -135,13 +131,12 @@ def scan_schedule_interstitials(
                 """,
                 (station_id, schedule_key, entry.interstitials_dir, entry.interstitials_probability)
             )
-            
-            # Scan the directory
-            seen, up = scan_station_media_dir(
+
+            n = scan_station_media_dir(
                 con, station_id, entry.interstitials_dir, "interstitial", verbose=verbose
             )
-            results[schedule_key] = (seen, up)
-    
+            results[schedule_key] = n
+
     return results
 
 
@@ -150,10 +145,7 @@ def load_station_cfgs(patterns: list[str]) -> list[StationConfig]:
     for pat in patterns:
         expanded = glob.glob(pat)
         paths.extend(expanded if expanded else [pat])
-    cfgs: list[StationConfig] = []
-    for p in paths:
-        cfgs.append(load_station_toml(p))
-    return cfgs
+    return [load_station_toml(p) for p in paths]
 
 
 def main() -> int:
@@ -168,25 +160,24 @@ def main() -> int:
     print(f"DB: {args.db}")
 
     print(f"Scanning songs under: {args.music}")
-    s_seen, s_up = scan_songs(con, args.music, verbose=args.verbose)
-    print(f"Songs: seen={s_seen}, scanned={s_up}")
+    n_songs = scan_songs(con, args.music, verbose=args.verbose)
+    print(f"Songs: {n_songs}")
 
     cfgs = load_station_cfgs(args.stations)
     for cfg in cfgs:
         sid = upsert_station(con, cfg)
         print(f"Station upserted: {cfg.name} @ {cfg.freq:.1f} FM (id={sid})")
 
-        i_seen, i_up = scan_station_media_dir(con, sid, cfg.idents_dir, "ident", verbose=args.verbose)
-        c_seen, c_up = scan_station_media_dir(con, sid, cfg.commercials_dir, "commercial", verbose=args.verbose)
-        print(f"  idents: seen={i_seen}, scanned={i_up}")
-        print(f"  commercials: seen={c_seen}, scanned={c_up}")
-        
-        # Scan interstitials for each schedule entry
+        n_idents = scan_station_media_dir(con, sid, cfg.idents_dir, "ident", verbose=args.verbose)
+        n_commercials = scan_station_media_dir(con, sid, cfg.commercials_dir, "commercial", verbose=args.verbose)
+        print(f"  idents: {n_idents}")
+        print(f"  commercials: {n_commercials}")
+
         interstitial_counts = scan_schedule_interstitials(con, sid, cfg, verbose=args.verbose)
         if interstitial_counts:
             print(f"  interstitials:")
-            for key, (seen, up) in interstitial_counts.items():
-                print(f"    {key}: seen={seen}, scanned={up}")
+            for key, n in interstitial_counts.items():
+                print(f"    {key}: {n}")
 
     con.commit()
     con.close()

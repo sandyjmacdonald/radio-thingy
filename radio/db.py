@@ -2,7 +2,6 @@
 from __future__ import annotations
 import sqlite3
 from pathlib import Path
-from typing import Optional, Any
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -60,7 +59,8 @@ CREATE TABLE IF NOT EXISTS station_state (
 
   pending_break INTEGER DEFAULT 0,
   last_break_ts REAL DEFAULT 0,
-  force_ident_next INTEGER DEFAULT 0
+  force_ident_next INTEGER DEFAULT 0,
+  last_ident_ts REAL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS station_interstitials (
@@ -83,22 +83,16 @@ def _ensure_column(con: sqlite3.Connection, table: str, col: str, decl: str) -> 
         con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
 def connect(db_path: str) -> sqlite3.Connection:
+    """Open (or create) the database at db_path, apply the schema, and run column migrations."""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(db_path, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
 
-    # Migrations for older DBs
+    # Migrations for older DBs that predate the current schema
     _ensure_column(con, "station_state", "queue_json", "TEXT")
     _ensure_column(con, "station_state", "queue_index", "INTEGER DEFAULT 0")
+    _ensure_column(con, "station_state", "last_ident_ts", "REAL DEFAULT 0")
     con.commit()
 
     return con
-
-def one(con: sqlite3.Connection, sql: str, params: tuple[Any, ...]=()) -> Optional[sqlite3.Row]:
-    cur = con.execute(sql, params)
-    return cur.fetchone()
-
-def all_(con: sqlite3.Connection, sql: str, params: tuple[Any, ...]=()) -> list[sqlite3.Row]:
-    cur = con.execute(sql, params)
-    return cur.fetchall()

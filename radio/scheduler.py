@@ -15,6 +15,8 @@ from . import helpers
 
 @dataclass(frozen=True)
 class OverlayIdent:
+    """Parameters for an ident to be overlaid on top of a currently playing song."""
+
     path: str
     at_s: float
     duck: float
@@ -23,6 +25,8 @@ class OverlayIdent:
 
 @dataclass(frozen=True)
 class NowPlaying:
+    """Snapshot of what a station should be playing at the current moment."""
+
     station: str
     kind: str                  # song/ident/commercial/noise
     path: Optional[str]
@@ -36,6 +40,8 @@ class NowPlaying:
 
 class Scheduler:
     """
+    Decides what each station plays at any given moment.
+
     Behaviour:
       - Noise-only if no tags in current schedule slot
       - Continuity via station_state timestamps (seek when re-tuned)
@@ -53,7 +59,7 @@ class Scheduler:
 
     IMPORTANT:
       - Ident overlays are ONLY emitted (and consumed) when `active=True`
-      - Idents must NOT “play late”: only schedule overlay when the song is starting now
+      - Idents must NOT "play late": only schedule overlay when the song is starting now
     """
 
     def __init__(
@@ -69,8 +75,6 @@ class Scheduler:
         self.filler_slop_s = float(filler_slop_s)
         self.break_slop_s = float(break_slop_s)
 
-        helpers.ensure_station_state_queue_columns(con)
-
         for name in station_cfgs.keys():
             helpers.station_id(con, name)
 
@@ -82,12 +86,13 @@ class Scheduler:
             base = int.from_bytes(h, "big")
             self._rng[name] = random.Random(base ^ run_entropy)
 
-        # Per-tick song reservation (reduce “same song at same time”)
+        # Per-tick song reservation (reduce "same song at same time")
         self._tick_reserved_song_ids: set[int] = set()
 
-    # ----------------- Public -----------------
+    # -------------------- Public Interface --------------------
 
     def tick_all(self, now_ts: Optional[float] = None) -> None:
+        """Advance all stations by one tick, marking any due commercial breaks."""
         now_ts = float(now_ts if now_ts is not None else time.time())
         self._tick_reserved_song_ids.clear()
         for name in self.cfgs.keys():
@@ -102,6 +107,7 @@ class Scheduler:
         *,
         active: bool = False,
     ) -> NowPlaying:
+        """Return what the station should be playing now, advancing if the current item has ended."""
         now_ts = float(now_ts if now_ts is not None else time.time())
         cfg = self.cfgs[station_name]
         sid = helpers.station_id(self.con, station_name)
@@ -160,7 +166,7 @@ class Scheduler:
         self.con.commit()
         return np
 
-    # ----------------- Advancement core -----------------
+    # -------------------- Advancement --------------------
 
     def _advance_station(
         self,
@@ -203,7 +209,6 @@ class Scheduler:
                     helpers.insert_play(self.con, sid, mid, str(item["kind"]), now_ts)
 
                     ident_overlay = None
-                    # Overlay only makes sense on a SONG start, and only if active/audible.
                     if active and str(item["kind"]) == "song":
                         ident_overlay = self._ident_overlay_if_due(
                             station_name, cfg, sid, now_ts, st, consume=True
@@ -238,26 +243,27 @@ class Scheduler:
                 first_id = int(queue_ids[0])
                 item = helpers.media_by_id(self.con, first_id)
                 dur = float(item["duration_s"] or 0.0) if item else 0.0
+                kind = str(item["kind"]) if item else "ident"
 
                 helpers.set_station_state(
                     self.con,
                     station_id_=sid,
                     media_id=first_id,
-                    kind=str(item["kind"]) if item else "ident",
+                    kind=kind,
                     started_ts=now_ts,
                     ends_ts=now_ts + dur,
                     queue_json=json.dumps(queue_ids),
                     queue_index=1,
                     pending_break=0,
                     last_break_ts=now_ts,
-                    force_ident_next=1,   # after break, next SONG overlays ident
+                    force_ident_next=1,   # after break, next song overlays ident
                     last_ident_ts=last_ident_ts,
                 )
-                helpers.insert_play(self.con, sid, first_id, str(item["kind"]) if item else "ident", now_ts)
+                helpers.insert_play(self.con, sid, first_id, kind, now_ts)
 
                 return NowPlaying(
                     station=station_name,
-                    kind=str(item["kind"]) if item else "ident",
+                    kind=kind,
                     path=str(item["path"]) if item else None,
                     media_id=first_id,
                     started_ts=now_ts,
@@ -282,20 +288,19 @@ class Scheduler:
         if song:
             mid = int(song["id"])
             self._tick_reserved_song_ids.add(mid)
-
             dur = float(song["duration_s"] or 0.0)
-            
-            # Check if we should queue an interstitial after this song
+
+            # Optionally queue an interstitial to play after this song
             queue_json = None
             queue_index = 0
             if schedule_entry and self._should_play_interstitial(station_name, schedule_entry):
-                interstitial = self._pick_random_interstitial(sid, schedule_entry.interstitials_dir)
+                interstitial = helpers.random_station_media_filtered(
+                    self.con, sid, "interstitial", path_prefix=schedule_entry.interstitials_dir
+                )
                 if interstitial:
-                    # Build queue: [song, interstitial]
-                    queue_ids = [mid, int(interstitial["id"])]
-                    queue_json = json.dumps(queue_ids)
-                    queue_index = 1  # Next item will be the interstitial
-            
+                    queue_json = json.dumps([mid, int(interstitial["id"])])
+                    queue_index = 1  # song is already playing; next advance picks up the interstitial
+
             helpers.set_station_state(
                 self.con,
                 station_id_=sid,
@@ -312,12 +317,10 @@ class Scheduler:
             )
             helpers.insert_play(self.con, sid, mid, "song", now_ts)
 
-            # Only emit overlay if station is active/audible.
-            st2 = helpers.get_station_state(self.con, sid) or {}
             ident_overlay = None
             if active:
                 ident_overlay = self._ident_overlay_if_due(
-                    station_name, cfg, sid, now_ts, st2, consume=True
+                    station_name, cfg, sid, now_ts, st, consume=True
                 )
 
             return NowPlaying(
@@ -353,12 +356,13 @@ class Scheduler:
         first_id = int(queue_ids[0])
         item = helpers.media_by_id(self.con, first_id)
         dur = float(item["duration_s"] or 0.0) if item else 0.0
+        kind = str(item["kind"]) if item else "ident"
 
         helpers.set_station_state(
             self.con,
             station_id_=sid,
             media_id=first_id,
-            kind=str(item["kind"]) if item else "ident",
+            kind=kind,
             started_ts=now_ts,
             ends_ts=now_ts + dur,
             queue_json=json.dumps(queue_ids),
@@ -368,11 +372,11 @@ class Scheduler:
             force_ident_next=force_ident_next,
             last_ident_ts=last_ident_ts,
         )
-        helpers.insert_play(self.con, sid, first_id, str(item["kind"]) if item else "ident", now_ts)
+        helpers.insert_play(self.con, sid, first_id, kind, now_ts)
 
         return NowPlaying(
             station=station_name,
-            kind=str(item["kind"]) if item else "ident",
+            kind=kind,
             path=str(item["path"]) if item else None,
             media_id=first_id,
             started_ts=now_ts,
@@ -382,7 +386,7 @@ class Scheduler:
             ident_overlay=None,
         )
 
-    # ----------------- Break/ident flags -----------------
+    # -------------------- Break and Ident Flags --------------------
 
     def _maybe_mark_break_due(self, station_name: str, now_ts: float) -> None:
         cfg = self.cfgs[station_name]
@@ -416,7 +420,6 @@ class Scheduler:
         *,
         consume: bool,
     ) -> Optional[OverlayIdent]:
-        # If not consuming (i.e. not active/audible), do not emit an overlay
         if not consume:
             return None
 
@@ -438,7 +441,6 @@ class Scheduler:
         if not due:
             return None
 
-        # Consume: clear force, stamp last_ident_ts
         helpers.update_station_flags(self.con, sid, force_ident_next=0, last_ident_ts=now_ts)
         self.con.commit()
 
@@ -449,7 +451,7 @@ class Scheduler:
             ramp_s=max(0.0, float(cfg.ident_ramp_s or 0.5)),
         )
 
-    # ----------------- De-sync song selection -----------------
+    # -------------------- Song Selection --------------------
 
     def _currently_playing_media_ids(self) -> set[int]:
         cur = self.con.execute(
@@ -510,7 +512,7 @@ class Scheduler:
 
         return rng.choice(pick_from)
 
-    # ----------------- Queue builders -----------------
+    # -------------------- Queue Builders --------------------
 
     def _build_ident_plus_commercials_queue(
         self, station_name: str, sid: int, target_s: float, slop_s: float
@@ -545,47 +547,24 @@ class Scheduler:
 
         return queue
 
-    # ----------------- Interstitial helpers -----------------
+    # -------------------- Interstitial Helpers --------------------
 
-    def _should_play_interstitial(
-        self, station_name: str, entry: ScheduleEntry
-    ) -> bool:
-        """
-        Decide whether to play an interstitial based on probability.
-        """
+    def _should_play_interstitial(self, station_name: str, entry: ScheduleEntry) -> bool:
         if not entry.interstitials_dir or entry.interstitials_probability <= 0:
             return False
-        
-        # Roll the dice
-        roll = self._rng[station_name].random()
-        return roll < entry.interstitials_probability
+        return self._rng[station_name].random() < entry.interstitials_probability
 
-    def _pick_random_interstitial(
-        self, sid: int, interstitials_dir: str
-    ) -> Optional:
-        """
-        Pick a random interstitial from the given directory for this station.
-        """
-        return helpers.random_station_media_filtered(
-            self.con, sid, "interstitial", path_prefix=interstitials_dir
-        )
-
-    # ----------------- Schedule time helpers -----------------
+    # -------------------- Schedule Helpers --------------------
 
     def _schedule_entry_for_now(self, cfg: StationConfig, now_ts: float) -> ScheduleEntry:
-        """Get the schedule entry for the current time, or an empty entry if none."""
+        """Return the schedule entry for the current time, or an empty entry if none is defined."""
         dt = datetime.fromtimestamp(now_ts).astimezone()
         wd = dt.strftime("%A").lower()
         hr = int(dt.hour)
         entry = cfg.schedule.get(wd, {}).get(hr)
         if entry:
             return entry
-        # Return empty entry if no schedule
         return ScheduleEntry(tags=[], interstitials_dir="", interstitials_probability=0.0)
-
-    def _tags_for_now(self, cfg: StationConfig, now_ts: float) -> list[str]:
-        """Get tags for the current time (convenience method for backward compatibility)."""
-        return self._schedule_entry_for_now(cfg, now_ts).tags
 
     def _next_slot_start_ts(self, now_ts: float) -> float:
         dt = datetime.fromtimestamp(now_ts).astimezone()

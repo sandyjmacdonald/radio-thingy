@@ -1,6 +1,7 @@
-# radio/repo.py
+# radio/helpers.py
 from __future__ import annotations
 
+import random
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +10,8 @@ from typing import Optional, Sequence, Any
 
 @dataclass(frozen=True)
 class MediaInfo:
+    """Metadata for a single media file, used to populate and update the media table."""
+
     path: str
     kind: str               # song/commercial/ident/noise/interstitial
     artist: Optional[str]
@@ -18,7 +21,7 @@ class MediaInfo:
     mtime: int
 
 
-# -------------------- generic query helpers --------------------
+# -------------------- Query Helpers --------------------
 
 def one(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> Optional[sqlite3.Row]:
     cur = con.execute(sql, params)
@@ -30,20 +33,7 @@ def all_(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> list[
     return cur.fetchall()
 
 
-# -------------------- migrations for station_state --------------------
-
-def ensure_station_state_queue_columns(con: sqlite3.Connection) -> None:
-    cols = {r["name"] for r in con.execute("PRAGMA table_info(station_state)")}
-    if "queue_json" not in cols:
-        con.execute("ALTER TABLE station_state ADD COLUMN queue_json TEXT")
-    if "queue_index" not in cols:
-        con.execute("ALTER TABLE station_state ADD COLUMN queue_index INTEGER DEFAULT 0")
-    if "last_ident_ts" not in cols:
-        con.execute("ALTER TABLE station_state ADD COLUMN last_ident_ts REAL DEFAULT 0")
-    con.commit()
-
-
-# -------------------- media/station upserts --------------------
+# -------------------- Media and Station Upserts --------------------
 
 def upsert_media(con: sqlite3.Connection, info: MediaInfo) -> int:
     row = one(con, "SELECT id, mtime FROM media WHERE path=?", (info.path,))
@@ -72,10 +62,10 @@ def upsert_media(con: sqlite3.Connection, info: MediaInfo) -> int:
 
 def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
     """
-    Expects cfg to have attributes:
-      name, freq, idents_dir, commercials_dir,
-      break_frequency_s, break_length_s,
-      ident_frequency_s, ident_pad_s, ident_duck, ident_ramp_s
+    Insert or update a station row from a config object.
+
+    cfg must have attributes: name, freq, idents_dir, commercials_dir,
+    break_frequency_s, break_length_s, ident_frequency_s, ident_pad_s, ident_duck, ident_ramp_s.
     """
     con.execute(
         """
@@ -129,7 +119,7 @@ def link_station_media(con: sqlite3.Connection, station_id_: int, media_id: int)
     )
 
 
-# -------------------- station media queries --------------------
+# -------------------- Station Media Queries --------------------
 
 def random_station_media(con: sqlite3.Connection, station_id_: int, kind: str) -> Optional[sqlite3.Row]:
     return one(
@@ -168,10 +158,7 @@ def media_by_id(con: sqlite3.Connection, media_id: int) -> Optional[sqlite3.Row]
 def random_station_media_filtered(
     con: sqlite3.Connection, station_id_: int, kind: str, path_prefix: str
 ) -> Optional[sqlite3.Row]:
-    """
-    Get a random station media item of the given kind where path starts with path_prefix.
-    Used for selecting interstitials from a specific directory.
-    """
+    """Get a random station media item of the given kind where path starts with path_prefix."""
     return one(
         con,
         """
@@ -226,11 +213,10 @@ def best_fit_song(con: sqlite3.Connection, tags: list[str], max_duration: float,
         elif abs(left - best_left) <= 1.5:
             best.append(r)
 
-    import random
     return random.choice(best) if best else None
 
 
-# -------------------- station_state helpers --------------------
+# -------------------- Station State Helpers --------------------
 
 def get_station_state(con: sqlite3.Connection, station_id_: int) -> Optional[sqlite3.Row]:
     return one(

@@ -15,14 +15,14 @@ from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
 
 
-# -------------------- CONFIG --------------------
+# -------------------- Config --------------------
 
 BASE_DIR = "/home/radio/radio-code"
 DB_PATH = f"{BASE_DIR}/radio.db"
 
 STATION_TOMLS_GLOB = f"{BASE_DIR}/stations/*.toml"
 
-NOISE_FILE = f"/home/radio/media/effects/noise.mp3"
+NOISE_FILE = "/home/radio/media/effects/noise.mp3"
 
 AUDIO_DEVICE = "pipewire"     # run WITHOUT sudo
 MASTER_VOL = 60               # global master 0-100
@@ -94,10 +94,12 @@ def _basename(p: Optional[str]) -> str:
     return p.split("/")[-1]
 
 
-# -------------------- Radio runtime --------------------
+# -------------------- Radio Runtime --------------------
 
 @dataclass
 class TuningState:
+    """Current state of the FM dial, including the nearest station and signal mix level."""
+
     freq: float = 90.0
     station_name: Optional[str] = None
     station_freq: Optional[float] = None
@@ -105,6 +107,8 @@ class TuningState:
 
 
 class RadioApp:
+    """Main radio application coordinating the scheduler, player, and GPIO input."""
+
     def __init__(self):
         # Load station configs
         paths = sorted(glob.glob(STATION_TOMLS_GLOB))
@@ -149,9 +153,11 @@ class RadioApp:
 
     def _maybe_log_and_play(self, np: NowPlaying) -> None:
         """
-        Only print when:
-          - the main program changes (song/commercial/ident/noise path)
-          - an ident overlay is triggered (the scheduler requested one)
+        Forward NowPlaying to the player, logging only when something changes.
+
+        Prints when:
+          - the main program changes (station, kind, or path)
+          - an ident overlay is newly triggered
         """
         program_sig = (np.station, np.kind, np.path)
         if program_sig != self._last_program_sig:
@@ -169,6 +175,7 @@ class RadioApp:
         self.player.play(np)
 
     def tune(self, delta: float) -> None:
+        """Adjust the dial by delta MHz, updating station selection and audio mix accordingly."""
         with self._lock:
             self.state.freq = clamp_freq(self.state.freq + delta)
             name, sf = nearest_station(self.state.freq, self.sts, self.mids)
@@ -196,6 +203,7 @@ class RadioApp:
                 self._maybe_log_and_play(np)
 
     def run(self) -> None:
+        """Start the main event loop, ticking all stations until interrupted."""
         # initial tune
         self.tune(0.0)
         print("Radio running. Ctrl+C to exit.")
