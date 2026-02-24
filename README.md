@@ -6,7 +6,7 @@ A Python-based FM radio station emulator that brings the nostalgic experience of
 
 Radio Thingy simulates a complete FM radio ecosystem with multiple stations broadcasting on different frequencies. Each station can have its own 24/7 programming schedule, mixing music with authentic radio station elements like idents (station identifications), interstitials (promos and announcements), and commercial breaks.
 
-Experience the joy of tuning through static between stations, catching your favorite music, and hearing those classic radio elements that made FM radio so engaging.
+Experience the joy of tuning through static between stations, catching your favourite music, and hearing those classic radio elements that made FM radio so engaging.
 
 ## Features
 
@@ -23,15 +23,15 @@ Experience the joy of tuning through static between stations, catching your favo
 
 ### 🎙️ Station Identifications (Idents)
 - Periodic station identification overlays
-- Customizable frequency and timing
-- Audio ducking - music volume reduces during ident playback
+- Customisable frequency and timing
+- Audio ducking — music volume reduces during ident playback
 - Configurable fade in/out for smooth transitions
 
-### 🎬 Interstitials (NEW!)
+### 🎬 Interstitials
 - Play short promotional clips between songs
 - Configure per hour and per music tag
 - Adjustable probability (0.0 to 1.0) for how often they play
-- Perfect for "Now playing your favorite rock hits!" style announcements
+- Perfect for "Now playing your favourite rock hits!" style announcements
 
 ### 📢 Commercial Breaks
 - Scheduled commercial breaks at configurable intervals
@@ -48,7 +48,7 @@ Experience the joy of tuning through static between stations, catching your favo
 ### 🔧 Smart Scheduler
 - Intelligent song selection based on duration to fit time slots
 - Avoids playing the same song on multiple stations simultaneously
-- Per-station seeded randomization for variety
+- Per-station seeded randomisation for variety
 - Queue system for seamless playback of breaks and interstitials
 
 ## Hardware Requirements
@@ -70,13 +70,6 @@ Experience the joy of tuning through static between stations, catching your favo
   - USB DAC
   - I2S DAC HAT
 - **Quality speakers or headphones**
-
-### Future Hardware Support
-🚧 **Coming Soon**: Physical control interface support
-- Rotary encoder for tuning between stations
-- Physical buttons for preset stations
-- Volume knob
-- Optional display for frequency/station information
 
 ## Installation
 
@@ -109,7 +102,7 @@ source .venv/bin/activate
 
 ### Directory Structure
 
-Organize your media files as follows:
+Organise your media files as follows:
 
 ```
 /path/to/media/
@@ -163,15 +156,32 @@ break_frequency_s = 900    # Commercial break every 15 minutes
 break_length_s = 60        # 60-second breaks
 
 ident_frequency_s = 180    # Station ID every 3 minutes
-ident_pad_s = 2.0          # Start 2 seconds into song
+ident_pad_s = 2.0          # Start 2 seconds into the song
 ident_duck = 0.4           # Reduce music to 40% during ident
 ident_ramp_s = 0.5         # 0.5 second fade
 
 [schedule.monday]
+# Morning drive - frequent promos
 7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
 8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-# ... more hours ...
+
+# Midday - occasional promos
+12 = { tags = "pop", interstitials = "/path/to/interstitials/midday", interstitials_probability = 0.2 }
+
+# Evening - different content, always play
+18 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 1.0 }
+
+# Late night - no interstitials
+23 = { tags = "pop" }
 ```
+
+#### Interstitial Schedule Parameters
+
+- **`interstitials`**: Directory path containing the interstitial MP3 files for this hour
+- **`interstitials_probability`**: Float between `0.0` and `1.0` controlling how often they play
+  - `0.0` — never play interstitials
+  - `0.3` — 30% chance of playing one after each song
+  - `1.0` — play an interstitial after every song
 
 See `stations/station.toml.example` for a complete example with detailed comments.
 
@@ -193,14 +203,14 @@ This will:
 - Scan interstitials from schedule configurations
 - Build the database for playback
 
-You can rescan anytime you add new media files.
+You can rescan any time you add new media files.
 
 ## Usage
 
 ### Starting the Radio
 
 ```bash
-python -m radio.radio --db /path/to/radio.db
+python -m radio.radio
 ```
 
 The radio will start playing with:
@@ -208,28 +218,11 @@ The radio will start playing with:
 - Appropriate programming based on current time
 - Background tick updating all stations
 
-### Interacting with the Radio (via code)
-
-Currently, interaction is programmatic. The `RadioApp` class provides:
-
-```python
-# Tune to a frequency
-radio.tune_to(99.9)
-
-# Get current status
-status = radio.get_status()
-print(f"Station: {status['station']}")
-print(f"Frequency: {status['freq']}")
-print(f"Now Playing: {status['kind']}")
-```
-
-🚧 **Physical controls coming soon!**
-
 ## Key Concepts
 
 ### Tags and Music Selection
 
-Music files are organized by tags (genres/categories). The tag is determined by the parent directory name:
+Music files are organised by tags (genres/categories). The tag is determined by the parent directory name:
 
 ```
 music/
@@ -247,16 +240,24 @@ Station schedules specify which tags to play each hour:
 
 ### Interstitials
 
-Interstitials are short audio clips (typically 5-30 seconds) that play between songs. They're perfect for:
+Interstitials are short audio clips (typically 5–30 seconds) that play between songs. They're perfect for:
 - "You're listening to MYCALL, 99.9 FM!"
-- "All your favorite rock hits, coming up next"
+- "All your favourite rock hits, coming up next"
 - "It's 3 PM, time for the afternoon show"
 - Station promos and special announcements
 
-Configure probability per hour:
-- `0.0` = never play
-- `0.3` = 30% chance after each song
-- `1.0` = play after every song
+#### How It Works
+
+1. **Scheduler decision**: When the scheduler selects a song, it checks the current schedule entry's interstitials configuration
+2. **Probability roll**: The station's random number generator is used to roll against `interstitials_probability`
+3. **Queue building**: If the roll succeeds, a random interstitial is picked from the configured directory and queued after the song
+4. **Playback**: The song plays first, then the interstitial plays automatically
+
+#### Notes
+
+- The same directory can be reused across multiple schedule entries
+- Each station has its own random number generator, so interstitials on different stations won't synchronise
+- The probability is evaluated fresh after each song, so the pattern stays unpredictable
 
 ### Station Idents
 
@@ -273,7 +274,7 @@ Commercial breaks are automatically triggered based on `break_frequency_s`. When
 1. Current song finishes
 2. Station ident plays
 3. Commercials play to fill `break_length_s`
-4. Music resumes with ident overlay
+4. Music resumes with an ident overlay
 
 ## Database Schema
 
@@ -282,7 +283,7 @@ The system uses SQLite to track:
 - **Stations**: Station configurations and settings
 - **Station Media**: Links between stations and their media
 - **Station State**: Current playback state per station
-- **Station Interstitials**: Interstitial configurations per schedule
+- **Station Interstitials**: Interstitial configurations per schedule entry
 - **Plays**: Playback history
 
 ## Development
@@ -302,18 +303,21 @@ radio-thingy/
 │   └── radio.py           # Main radio application
 ├── stations/              # Station configurations
 │   └── station.toml.example
-├── install.sh            # Installation script
-├── rescan.py             # Utility to rescan media
+├── install.sh             # Installation script
+├── rescan.py              # Utility to rescan media
 └── README.md
 ```
 
-### Running Tests
+### Utility Scripts
 
 ```bash
-# Rescan all media
+# Delete the database and rescan all media
 python rescan.py
 
-# Scan with custom paths
+# Rescan with custom paths
+python rescan.py --db ./radio.db --music ~/media/music --stations "./stations/*.toml"
+
+# Scan without nuking the database
 python -m radio.scan_media --help
 ```
 
@@ -331,28 +335,13 @@ python -m radio.scan_media --help
 
 ### Interstitials Not Playing
 - Verify `interstitials_probability` is > 0
-- Check that interstitial directory exists and contains MP3s
+- Check that the interstitials directory exists and contains MP3 files
 - Rescan media after adding interstitials
 
 ### Performance Issues
 - Use a Raspberry Pi 3 or newer
 - Close unnecessary background processes
 - Consider using a lighter desktop environment
-
-## Future Enhancements
-
-- 🎛️ Physical control interface (rotary encoder, buttons)
-- 📟 Optional display showing station info
-- 🌐 Web interface for remote control
-- 📱 Mobile app for tuning
-- 🎨 Visual spectrum analyzer
-- 📊 Playback statistics and reports
-- 🔊 Multi-room audio support
-- ☁️ Cloud music library integration
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 
@@ -369,4 +358,3 @@ Built with:
 ---
 
 **Enjoy your personal FM radio station!** 📻🎵
-
