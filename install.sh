@@ -38,7 +38,8 @@ sudo -u "${RADIO_USER}" "${VENV_DIR}/bin/python" -m pip install --upgrade \
 echo "==> Installing Python deps in venv..."
 sudo -u "${RADIO_USER}" "${VENV_DIR}/bin/pip" install --upgrade \
   python-mpv mutagen \
-  gpiozero lgpio toml
+  gpiozero lgpio toml \
+  fastapi "uvicorn[standard]"
 
 echo "==> Sanity checks..."
 

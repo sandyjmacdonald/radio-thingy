@@ -9,10 +9,13 @@ from typing import Optional
 
 from gpiozero import Button
 
+import uvicorn
+
 from .db import connect
 from .station_config import load_station_toml, StationConfig
 from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
+from .api import create_api
 
 
 # -------------------- Config --------------------
@@ -51,6 +54,10 @@ RADIO_AF = (
 
 # Main loop tick
 TICK_S = 0.25
+
+# API server
+API_HOST = "0.0.0.0"
+API_PORT = 8000
 
 # -------------------- Helpers --------------------
 
@@ -204,6 +211,15 @@ class RadioApp:
 
     def run(self) -> None:
         """Start the main event loop, ticking all stations until interrupted."""
+        # Start API server in background daemon thread
+        fastapi_app = create_api(self)
+        api_thread = threading.Thread(
+            target=uvicorn.run,
+            kwargs={"app": fastapi_app, "host": API_HOST, "port": API_PORT, "log_level": "warning"},
+            daemon=True,
+        )
+        api_thread.start()
+
         # initial tune
         self.tune(0.0)
         print("Radio running. Ctrl+C to exit.")
