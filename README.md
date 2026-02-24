@@ -100,6 +100,35 @@ source .venv/bin/activate
 
 ## Configuration
 
+### Runtime Configuration (`config.toml`)
+
+All runtime settings live in a single TOML file. Copy the provided example and edit the paths:
+
+```bash
+cp config.toml.example config.toml
+```
+
+The three keys are **required**; everything else has a sensible default:
+
+| Key | Required | Default | Description |
+|---|---|---|---|
+| `db_path` | ✓ | — | Path to the SQLite database |
+| `station_tomls_glob` | ✓ | — | Glob pattern for station TOML files |
+| `noise_file` | ✓ | — | Path to the inter-station static/noise MP3 |
+| `audio_device` | | `"pipewire"` | MPV audio output device |
+| `master_vol` | | `60` | Global master volume, 0–100 |
+| `radio_af` | | `null` | Optional MPV `--af` filter chain for radio processing |
+| `freq_min` | | `88.0` | Lower bound of the dial in MHz |
+| `freq_max` | | `98.0` | Upper bound of the dial in MHz |
+| `step` | | `0.1` | MHz per button press |
+| `lock_window` | | `0.2` | MHz from a station centre → full volume |
+| `fade_window` | | `0.5` | MHz fade zone outside `lock_window` |
+| `tick_s` | | `0.25` | Main loop tick interval in seconds |
+| `api_host` | | `"0.0.0.0"` | HTTP API bind address |
+| `api_port` | | `8000` | HTTP API port |
+
+See `config.toml.example` for the full file with inline comments.
+
 ### Directory Structure
 
 Organise your media files as follows:
@@ -210,13 +239,25 @@ You can rescan any time you add new media files.
 ### Starting the Radio
 
 ```bash
-python -m radio.radio
+python play_radio.py
 ```
+
+`play_radio.py` is the sole entry point. It reads `CONFIG_PATH` (set to `/home/radio/radio-code/config.toml` by default — edit the constant at the top of the file to match your setup), then wires up the GPIO buttons and starts the radio.
 
 The radio will start playing with:
 - Initial station tuned to the first configured station
 - Appropriate programming based on current time
 - Background tick updating all stations
+
+To run without GPIO (e.g. for API-only use on a non-Pi machine), you can instantiate `RadioApp` directly with no inputs:
+
+```python
+from radio.config import load_config
+from radio.radio import RadioApp
+
+app = RadioApp(config=load_config("config.toml"), inputs=[])
+app.run()
+```
 
 ## HTTP API
 
@@ -387,16 +428,20 @@ The system uses SQLite to track:
 radio-thingy/
 ├── radio/                  # Main package
 │   ├── __init__.py
+│   ├── config.py          # RadioConfig dataclass + load_config()
 │   ├── db.py              # Database schema and connection
 │   ├── helpers.py         # Database query helpers
-│   ├── station_config.py  # Configuration parsing
+│   ├── station_config.py  # Station TOML parsing
 │   ├── scan_media.py      # Media scanning
 │   ├── scheduler.py       # Station scheduler logic
 │   ├── player.py          # Audio playback (MPV)
+│   ├── input.py           # TuneInput abstraction (GPIO, etc.)
 │   ├── api.py             # HTTP API (FastAPI)
-│   └── radio.py           # Main radio application
+│   └── radio.py           # RadioApp — pure library, no entry point
 ├── stations/              # Station configurations
 │   └── station.toml.example
+├── play_radio.py          # Entry point (GPIO buttons, loads config.toml)
+├── config.toml.example    # Fully documented config template
 ├── install.sh             # Installation script
 ├── rescan.py              # Utility to rescan media
 └── README.md

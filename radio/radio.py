@@ -9,66 +9,26 @@ from typing import Optional
 
 import uvicorn
 
+from .config import RadioConfig
 from .db import connect
-from .input import TuneInput, GpioButtonInput
+from .input import TuneInput
 from .station_config import load_station_toml, StationConfig
 from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
 from .api import create_api
 
 
-# -------------------- Config --------------------
-
-BASE_DIR = "/home/radio/radio-code"
-DB_PATH = f"{BASE_DIR}/radio.db"
-
-STATION_TOMLS_GLOB = f"{BASE_DIR}/stations/*.toml"
-
-NOISE_FILE = "/home/radio/media/effects/noise.mp3"
-
-AUDIO_DEVICE = "pipewire"     # run WITHOUT sudo
-MASTER_VOL = 60               # global master 0-100
-
-# Dial/tuning behaviour
-FREQ_MIN = 88.0
-FREQ_MAX = 98.0
-STEP = 0.1
-
-LOCK_WINDOW = 0.2
-FADE_WINDOW = 0.5
-
-# Buttons (active low)
-BTN_DOWN = 5
-BTN_UP = 6
-
-# Optional radio “processing” (can be None if you want raw)
-RADIO_AF = (
-    "lavfi=["
-    "highpass=f=70,"
-    "lowpass=f=15000,"
-    "acompressor=threshold=-20dB:ratio=4:attack=4:release=140:makeup=7:knee=6dB,"
-    "alimiter=limit=0.97"
-    "]"
-)
-
-# Main loop tick
-TICK_S = 0.25
-
-# API server
-API_HOST = "0.0.0.0"
-API_PORT = 8000
-
 # -------------------- Helpers --------------------
 
-def clamp_freq(v: float) -> float:
-    return round(max(FREQ_MIN, min(FREQ_MAX, v)), 1)
+def clamp_freq(v: float, freq_min: float, freq_max: float) -> float:
+    return round(max(freq_min, min(freq_max, v)), 1)
 
 
-def gain_from_delta(delta: float) -> float:
-    if delta <= LOCK_WINDOW:
+def gain_from_delta(delta: float, lock_window: float, fade_window: float) -> float:
+    if delta <= lock_window:
         return 1.0
-    if delta <= LOCK_WINDOW + FADE_WINDOW:
-        return 1.0 - (delta - LOCK_WINDOW) / FADE_WINDOW
+    if delta <= lock_window + fade_window:
+        return 1.0 - (delta - lock_window) / fade_window
     return 0.0
 
 
@@ -115,11 +75,13 @@ class TuningState:
 class RadioApp:
     """Main radio application coordinating the scheduler, player, and GPIO input."""
 
-    def __init__(self, inputs: list[TuneInput] | None = None):
+    def __init__(self, config: RadioConfig, inputs: list[TuneInput] | None = None):
+        self.config = config
+
         # Load station configs
-        paths = sorted(glob.glob(STATION_TOMLS_GLOB))
+        paths = sorted(glob.glob(self.config.station_tomls_glob))
         if not paths:
-            raise RuntimeError(f"No station TOMLs found at {STATION_TOMLS_GLOB}")
+            raise RuntimeError(f"No station TOMLs found at {self.config.station_tomls_glob}")
 
         self.station_cfgs: dict[str, StationConfig] = {}
         for p in paths:
@@ -130,22 +92,22 @@ class RadioApp:
         self.mids = midpoints(self.sts)
 
         # DB + scheduler
-        self.con = connect(DB_PATH)
+        self.con = connect(self.config.db_path)
         self.scheduler = Scheduler(self.con, self.station_cfgs)
 
         # Player
         pcfg = PlayerConfig(
-            audio_device=AUDIO_DEVICE,
-            master_vol=MASTER_VOL,
-            radio_af=RADIO_AF,
+            audio_device=self.config.audio_device,
+            master_vol=self.config.master_vol,
+            radio_af=self.config.radio_af,
         )
-        self.player = Player(NOISE_FILE, pcfg)
+        self.player = Player(self.config.noise_file, pcfg)
 
         # tuning state
         self.state = TuningState(freq=90.0)
 
         # input devices
-        self._inputs = inputs if inputs is not None else [GpioButtonInput(BTN_DOWN, BTN_UP, STEP)]
+        self._inputs = inputs or []
         for inp in self._inputs:
             inp.start(self.tune)
 
@@ -182,11 +144,13 @@ class RadioApp:
     def tune(self, delta: float) -> None:
         """Adjust the dial by delta MHz, updating station selection and audio mix accordingly."""
         with self._lock:
-            self.state.freq = clamp_freq(self.state.freq + delta)
+            self.state.freq = clamp_freq(
+                self.state.freq + delta, self.config.freq_min, self.config.freq_max
+            )
             name, sf = nearest_station(self.state.freq, self.sts, self.mids)
 
             d = abs(self.state.freq - sf)
-            g = gain_from_delta(d)
+            g = gain_from_delta(d, self.config.lock_window, self.config.fade_window)
             self.state.base_music_vol = int(g * 100)
 
             # crossfade mix immediately for responsiveness
@@ -213,7 +177,12 @@ class RadioApp:
         fastapi_app = create_api(self)
         api_thread = threading.Thread(
             target=uvicorn.run,
-            kwargs={"app": fastapi_app, "host": API_HOST, "port": API_PORT, "log_level": "warning"},
+            kwargs={
+                "app": fastapi_app,
+                "host": self.config.api_host,
+                "port": self.config.api_port,
+                "log_level": "warning",
+            },
             daemon=True,
         )
         api_thread.start()
@@ -226,7 +195,7 @@ class RadioApp:
             while True:
                 now = time.time()
 
-                # Keep all stations progressing while you’re not tuned to them
+                # Keep all stations progressing while you're not tuned to them
                 self.scheduler.tick_all(now)
 
                 # If tuned close enough to a station, ensure the current program is correct
@@ -239,7 +208,7 @@ class RadioApp:
                     np = self.scheduler.ensure_station_current(st, now, active=True)
                     self._maybe_log_and_play(np)
 
-                time.sleep(TICK_S)
+                time.sleep(self.config.tick_s)
 
         except KeyboardInterrupt:
             pass
@@ -257,12 +226,3 @@ class RadioApp:
                 self.con.close()
             except Exception:
                 pass
-
-
-def main() -> None:
-    app = RadioApp()
-    app.run()
-
-
-if __name__ == "__main__":
-    main()

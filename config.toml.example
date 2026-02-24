@@ -1,0 +1,25 @@
+# Required: paths
+db_path            = "/home/radio/radio-code/radio.db"
+station_tomls_glob = "/home/radio/radio-code/stations/*.toml"
+noise_file         = "/home/radio/media/effects/noise.mp3"
+
+# Audio output
+audio_device = "pipewire"   # run WITHOUT sudo
+master_vol   = 60           # global master, 0–100
+
+# Optional radio "processing" — remove or comment out for raw audio
+radio_af = "lavfi=[highpass=f=70,lowpass=f=15000,acompressor=threshold=-20dB:ratio=4:attack=4:release=140:makeup=7:knee=6dB,alimiter=limit=0.97]"
+
+# Dial behaviour
+freq_min    = 88.0
+freq_max    = 98.0
+step        = 0.1    # MHz per button press
+lock_window = 0.2    # MHz from station centre → full volume
+fade_window = 0.5    # MHz fade zone outside lock_window
+
+# Main loop
+tick_s = 0.25
+
+# HTTP API
+api_host = "0.0.0.0"
+api_port = 8000
