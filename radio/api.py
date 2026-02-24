@@ -1,7 +1,6 @@
 # radio/api.py
 from __future__ import annotations
 
-import json
 import time
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -14,12 +13,12 @@ if TYPE_CHECKING:
     from .radio import RadioApp
 
 
-def _build_now_playing_and_up_next(
+def _build_now_playing(
     con: Any, row: Any
-) -> tuple[Optional[dict[str, Any]], Optional[dict[str, Any]]]:
-    """Build now_playing and up_next dicts from a station_state row."""
+) -> Optional[dict[str, Any]]:
+    """Build now_playing dict from a station_state row."""
     if row is None or row["kind"] == "noise":
-        return {"type": "noise"}, None
+        return {"type": "noise"}
 
     now = time.time()
 
@@ -35,7 +34,7 @@ def _build_now_playing_and_up_next(
     ends_at = float(row["ends_ts"]) if row["ends_ts"] is not None else None
     duration_s = float(row["duration_s"]) if row["duration_s"] is not None else None
 
-    now_playing: dict[str, Any] = {
+    return {
         "type": row["kind"],
         "artist": media_row["artist"] if media_row else None,
         "title": media_row["title"] if media_row else None,
@@ -44,29 +43,6 @@ def _build_now_playing_and_up_next(
         "duration_s": duration_s,
         "elapsed_s": round(now - started_at, 3) if started_at is not None else None,
     }
-
-    up_next: Optional[dict[str, Any]] = None
-    queue_json = row["queue_json"]
-    if queue_json is not None:
-        try:
-            queue = json.loads(queue_json)
-            queue_index = int(row["queue_index"] or 0)
-            if queue_index < len(queue):
-                next_row = helpers.one(
-                    con,
-                    "SELECT kind, artist, title FROM media WHERE id=?",
-                    (int(queue[queue_index]),),
-                )
-                if next_row:
-                    up_next = {
-                        "type": next_row["kind"],
-                        "artist": next_row["artist"],
-                        "title": next_row["title"],
-                    }
-        except (json.JSONDecodeError, TypeError, ValueError, KeyError):
-            pass
-
-    return now_playing, up_next
 
 
 def create_api(app: RadioApp) -> FastAPI:
@@ -97,11 +73,10 @@ def create_api(app: RadioApp) -> FastAPI:
             try:
                 sid = helpers.station_id(con, station)
             except RuntimeError:
-                return {**base, "now_playing": None, "up_next": None}
+                return {**base, "now_playing": None}
 
             row = helpers.get_station_state(con, sid)
-            now_playing, up_next = _build_now_playing_and_up_next(con, row)
-            return {**base, "now_playing": now_playing, "up_next": up_next}
+            return {**base, "now_playing": _build_now_playing(con, row)}
 
         # --- Current tuning state ---
         tuned = base_music_vol > 0 and current_station is not None
@@ -113,16 +88,15 @@ def create_api(app: RadioApp) -> FastAPI:
         }
 
         if not tuned:
-            return {**base, "now_playing": None, "up_next": None}
+            return {**base, "now_playing": None}
 
         try:
             sid = helpers.station_id(con, current_station)
         except RuntimeError:
-            return {**base, "now_playing": None, "up_next": None}
+            return {**base, "now_playing": None}
 
         row = helpers.get_station_state(con, sid)
-        now_playing, up_next = _build_now_playing_and_up_next(con, row)
-        return {**base, "now_playing": now_playing, "up_next": up_next}
+        return {**base, "now_playing": _build_now_playing(con, row)}
 
     @fastapi_app.get("/stations")
     def stations_list() -> list[dict[str, Any]]:
