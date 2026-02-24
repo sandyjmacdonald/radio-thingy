@@ -218,6 +218,99 @@ The radio will start playing with:
 - Appropriate programming based on current time
 - Background tick updating all stations
 
+## HTTP API
+
+When the radio starts, a FastAPI server starts automatically on port `8000`. All endpoints are read-only except `/tune`.
+
+### `GET /stations`
+
+Returns all configured stations sorted by frequency.
+
+```bash
+curl http://localhost:8000/stations
+```
+
+```json
+[
+  { "name": "KHHZ", "frequency": 92.5 },
+  { "name": "WXYZ", "frequency": 95.1 }
+]
+```
+
+---
+
+### `GET /status`
+
+Returns the current state of the dial — what is playing and what is queued next.
+
+```bash
+curl http://localhost:8000/status
+```
+
+```json
+{
+  "frequency": 92.5,
+  "station": "KHHZ",
+  "tuned": true,
+  "now_playing": {
+    "type": "song",
+    "artist": "The Beatles",
+    "title": "Let It Be",
+    "started_at": 1234567890.123,
+    "ends_at": 1234567950.456,
+    "duration_s": 243.5,
+    "elapsed_s": 60.3
+  },
+  "up_next": {
+    "type": "interstitial",
+    "artist": null,
+    "title": "Morning Promo"
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `frequency` | Current dial frequency in MHz |
+| `station` | Name of the nearest station |
+| `tuned` | `true` when the dial is close enough to a station to hear it |
+| `now_playing` | `null` when not tuned; `{"type": "noise"}` when tuned to static; full object when playing |
+| `up_next` | Next item already in the queue, or `null` if nothing is queued yet |
+| `type` | One of: `song`, `interstitial`, `commercial`, `ident`, `noise` |
+| `elapsed_s` | Seconds since the current track started, computed at request time |
+
+**Optional `?station=` parameter**
+
+Pass a station name to query any station regardless of what is currently tuned:
+
+```bash
+curl "http://localhost:8000/status?station=WXYZ"
+```
+
+This always returns `now_playing` and `up_next` for the named station. `tuned` reflects whether the dial is actually on that station. Returns `404` for unknown station names.
+
+---
+
+### `POST /tune`
+
+Moves the dial to a station by name or to a specific frequency. Returns the updated `/status` response.
+
+**Tune to a station by name:**
+
+```bash
+curl -X POST "http://localhost:8000/tune?station=KHHZ"
+```
+
+**Tune to a frequency:**
+
+```bash
+curl -X POST "http://localhost:8000/tune?frequency=92.5"
+```
+
+Passing both `station` and `frequency` in the same request returns `400`. An unknown station name returns `404`. Frequencies are clamped to the configured dial range.
+
+---
+
 ## Key Concepts
 
 ### Tags and Music Selection
@@ -300,6 +393,7 @@ radio-thingy/
 │   ├── scan_media.py      # Media scanning
 │   ├── scheduler.py       # Station scheduler logic
 │   ├── player.py          # Audio playback (MPV)
+│   ├── api.py             # HTTP API (FastAPI)
 │   └── radio.py           # Main radio application
 ├── stations/              # Station configurations
 │   └── station.toml.example
