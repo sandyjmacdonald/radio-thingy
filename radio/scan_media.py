@@ -170,8 +170,10 @@ def main() -> int:
 
         n_idents = scan_station_media_dir(con, sid, cfg.idents_dir, "ident", verbose=args.verbose)
         n_commercials = scan_station_media_dir(con, sid, cfg.commercials_dir, "commercial", verbose=args.verbose)
+        n_toth = scan_station_media_dir(con, sid, cfg.top_of_the_hour, "interstitial", verbose=args.verbose)
         print(f"  idents: {n_idents}")
         print(f"  commercials: {n_commercials}")
+        print(f"  top_of_the_hour: {n_toth}")
 
         interstitial_counts = scan_schedule_interstitials(con, sid, cfg, verbose=args.verbose)
         if interstitial_counts:

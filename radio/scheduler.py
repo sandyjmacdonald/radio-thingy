@@ -205,6 +205,7 @@ class Scheduler:
                         last_break_ts=float(st["last_break_ts"] or 0.0),
                         force_ident_next=int(st["force_ident_next"] or 0),
                         last_ident_ts=float(st["last_ident_ts"] or 0.0),
+                        last_toth_slot_ts=float(st["last_toth_slot_ts"] or 0.0),
                     )
                     helpers.insert_play(self.con, sid, mid, str(item["kind"]), now_ts)
 
@@ -233,6 +234,34 @@ class Scheduler:
         last_break_ts = float(st["last_break_ts"] or 0.0) if st else 0.0
         force_ident_next = int(st["force_ident_next"] or 0) if st else 0
         last_ident_ts = float(st["last_ident_ts"] or 0.0) if st else 0.0
+        last_toth_slot_ts = float(st["last_toth_slot_ts"] or 0.0) if st else 0.0
+
+        # Top-of-the-hour jingle
+        slot_start_ts = self._current_slot_start_ts(now_ts)
+        toth_dir = cfg.top_of_the_hour
+        if toth_dir and last_toth_slot_ts != slot_start_ts:
+            toth_item = helpers.random_station_media_filtered(
+                self.con, sid, "interstitial", toth_dir
+            )
+            if toth_item:
+                mid = int(toth_item["id"])
+                dur = float(toth_item["duration_s"] or 0.0)
+                helpers.set_station_state(
+                    self.con,
+                    station_id_=sid, media_id=mid, kind="interstitial",
+                    started_ts=now_ts, ends_ts=now_ts + dur,
+                    queue_json=None, queue_index=0,
+                    pending_break=pending_break, last_break_ts=last_break_ts,
+                    force_ident_next=force_ident_next, last_ident_ts=last_ident_ts,
+                    last_toth_slot_ts=slot_start_ts,
+                )
+                helpers.insert_play(self.con, sid, mid, "top_of_hour", now_ts)
+                return NowPlaying(
+                    station=station_name, kind="top_of_hour",
+                    path=str(toth_item["path"]), media_id=mid,
+                    started_ts=now_ts, ends_ts=now_ts + dur,
+                    seek_s=0.0, slot_end_ts=slot_end_ts, ident_overlay=None,
+                )
 
         # Break if pending
         if pending_break and int(cfg.break_length_s or 0) > 0:
@@ -258,6 +287,7 @@ class Scheduler:
                     last_break_ts=now_ts,
                     force_ident_next=1,   # after break, next song overlays ident
                     last_ident_ts=last_ident_ts,
+                    last_toth_slot_ts=last_toth_slot_ts,
                 )
                 helpers.insert_play(self.con, sid, first_id, kind, now_ts)
 
@@ -314,6 +344,7 @@ class Scheduler:
                 last_break_ts=last_break_ts,
                 force_ident_next=force_ident_next,
                 last_ident_ts=last_ident_ts,
+                last_toth_slot_ts=last_toth_slot_ts,
             )
             helpers.insert_play(self.con, sid, mid, "song", now_ts)
 
@@ -371,6 +402,7 @@ class Scheduler:
             last_break_ts=last_break_ts,
             force_ident_next=force_ident_next,
             last_ident_ts=last_ident_ts,
+            last_toth_slot_ts=last_toth_slot_ts,
         )
         helpers.insert_play(self.con, sid, first_id, kind, now_ts)
 
@@ -570,3 +602,7 @@ class Scheduler:
         dt = datetime.fromtimestamp(now_ts).astimezone()
         next_hour = dt.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         return next_hour.timestamp()
+
+    def _current_slot_start_ts(self, now_ts: float) -> float:
+        dt = datetime.fromtimestamp(now_ts).astimezone()
+        return dt.replace(minute=0, second=0, microsecond=0).timestamp()

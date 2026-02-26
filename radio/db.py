@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS station_state (
   pending_break INTEGER DEFAULT 0,
   last_break_ts REAL DEFAULT 0,
   force_ident_next INTEGER DEFAULT 0,
-  last_ident_ts REAL DEFAULT 0
+  last_ident_ts REAL DEFAULT 0,
+  last_toth_slot_ts REAL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS station_interstitials (
@@ -93,6 +94,7 @@ def connect(db_path: str) -> sqlite3.Connection:
     _ensure_column(con, "station_state", "queue_json", "TEXT")
     _ensure_column(con, "station_state", "queue_index", "INTEGER DEFAULT 0")
     _ensure_column(con, "station_state", "last_ident_ts", "REAL DEFAULT 0")
+    _ensure_column(con, "station_state", "last_toth_slot_ts", "REAL DEFAULT 0")
     con.commit()
 
     return con

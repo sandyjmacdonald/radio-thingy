@@ -126,6 +126,9 @@ class StationConfig:
     ident_duck: float = 0.4
     ident_ramp_s: float = 0.5
 
+    # Top-of-the-hour jingle directory
+    top_of_the_hour: str = ""
+
     # Schedule: day -> hour(int 0-23) -> ScheduleEntry
     schedule: dict[str, dict[int, ScheduleEntry]] = field(default_factory=dict)
 
@@ -188,6 +191,7 @@ def load_station_toml(path: str) -> StationConfig:
     ident_duck = _as_float(data.get("ident_duck") or 0.4, 0.4)
     ident_ramp_s = _as_float(data.get("ident_ramp_s") or data.get("ident_ramp") or 0.5, 0.5)
 
+    top_of_the_hour = _as_str(data.get("top_of_the_hour")).strip()
     schedule = _normalize_schedule(data.get("schedule"))
 
     return StationConfig(
@@ -201,5 +205,6 @@ def load_station_toml(path: str) -> StationConfig:
         ident_pad_s=ident_pad_s,
         ident_duck=ident_duck,
         ident_ramp_s=ident_ramp_s,
+        top_of_the_hour=top_of_the_hour,
         schedule=schedule,
     )

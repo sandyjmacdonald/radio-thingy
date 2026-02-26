@@ -226,7 +226,7 @@ def get_station_state(con: sqlite3.Connection, station_id_: int) -> Optional[sql
           ss.station_id,
           ss.current_media_id, ss.kind, ss.started_ts, ss.ends_ts,
           ss.queue_json, ss.queue_index,
-          ss.pending_break, ss.last_break_ts, ss.force_ident_next, ss.last_ident_ts,
+          ss.pending_break, ss.last_break_ts, ss.force_ident_next, ss.last_ident_ts, ss.last_toth_slot_ts,
           m.path AS path, m.duration_s AS duration_s
         FROM station_state ss
         LEFT JOIN media m ON m.id = ss.current_media_id
@@ -270,15 +270,16 @@ def set_station_state(
     last_break_ts: float,
     force_ident_next: int,
     last_ident_ts: float,
+    last_toth_slot_ts: float = 0.0,
 ) -> None:
     con.execute(
         """
         INSERT INTO station_state(
           station_id, current_media_id, kind, started_ts, ends_ts,
           queue_json, queue_index,
-          pending_break, last_break_ts, force_ident_next, last_ident_ts
+          pending_break, last_break_ts, force_ident_next, last_ident_ts, last_toth_slot_ts
         )
-        VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(station_id) DO UPDATE SET
           current_media_id=excluded.current_media_id,
           kind=excluded.kind,
@@ -289,7 +290,8 @@ def set_station_state(
           pending_break=excluded.pending_break,
           last_break_ts=excluded.last_break_ts,
           force_ident_next=excluded.force_ident_next,
-          last_ident_ts=excluded.last_ident_ts
+          last_ident_ts=excluded.last_ident_ts,
+          last_toth_slot_ts=excluded.last_toth_slot_ts
         """,
         (
             int(station_id_),
@@ -303,6 +305,7 @@ def set_station_state(
             float(last_break_ts),
             int(force_ident_next),
             float(last_ident_ts),
+            float(last_toth_slot_ts),
         ),
     )
 
@@ -315,6 +318,7 @@ def update_station_flags(
     last_break_ts: Optional[float] = None,
     force_ident_next: Optional[int] = None,
     last_ident_ts: Optional[float] = None,
+    last_toth_slot_ts: Optional[float] = None,
     queue_json: Optional[str] = None,
     queue_index: Optional[int] = None,
 ) -> None:
@@ -328,6 +332,8 @@ def update_station_flags(
         sets.append("force_ident_next=?"); params.append(int(force_ident_next))
     if last_ident_ts is not None:
         sets.append("last_ident_ts=?"); params.append(float(last_ident_ts))
+    if last_toth_slot_ts is not None:
+        sets.append("last_toth_slot_ts=?"); params.append(float(last_toth_slot_ts))
     if queue_json is not None:
         sets.append("queue_json=?"); params.append(queue_json)
     if queue_index is not None:

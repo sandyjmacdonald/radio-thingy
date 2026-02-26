@@ -33,6 +33,10 @@ Experience the joy of tuning through static between stations, catching your favo
 - Adjustable probability (0.0 to 1.0) for how often they play
 - Perfect for "Now playing your favourite rock hits!" style announcements
 
+### ⏰ Top-of-the-Hour Jingles
+
+A single MP3 (chosen at random from a directory) plays as the very first item whenever a new hour slot begins. Unlike interstitials, there is no probability gate — the jingle always plays. Configure the directory with `top_of_the_hour` in your station TOML.
+
 ### 📢 Commercial Breaks
 - Scheduled commercial breaks at configurable intervals
 - Automatic break construction (ident + commercials)
@@ -154,6 +158,12 @@ Organise your media files as follows:
 │   │   └── ad2.mp3
 │   └── shared/
 │       └── generic-ad.mp3
+├── toth/                     # Top-of-the-hour jingles
+│   ├── MYCALL/
+│   │   ├── toth1.mp3
+│   │   └── toth2.mp3
+│   └── OTHERCALL/
+│       └── toth.mp3
 └── interstitials/            # Promotional clips
     ├── morning/
     │   ├── morning-show-promo.mp3
@@ -393,6 +403,29 @@ Interstitials are short audio clips (typically 5–30 seconds) that play between
 - Each station has its own random number generator, so interstitials on different stations won't synchronise
 - The probability is evaluated fresh after each song, so the pattern stays unpredictable
 
+### Top-of-the-Hour Jingles
+
+Set `top_of_the_hour` in your station TOML to a directory containing MP3 files:
+
+```toml
+top_of_the_hour = "/path/to/media/toth/MYCALL"
+```
+
+The scheduler picks a random file from that directory and plays it as the **first item of every new hour slot**. Once it has played for a given hour, it will not play again until the next hour boundary — even if `_advance_station` is called multiple times within the same hour.
+
+If the directory is missing or empty the feature is silently skipped and normal scheduling continues. No rescan is needed when adding files; just run `scan_media.py` again after populating the directory.
+
+Example media tree:
+
+```
+/path/to/media/
+└── toth/
+    └── MYCALL/
+        ├── top-of-hour-1.mp3
+        ├── top-of-hour-2.mp3
+        └── top-of-hour-3.mp3
+```
+
 ### Station Idents
 
 Station idents are longer identification announcements that overlay on top of songs. They typically include:
@@ -476,6 +509,10 @@ python -m radio.scan_media --help
 - Verify `interstitials_probability` is > 0
 - Check that the interstitials directory exists and contains MP3 files
 - Rescan media after adding interstitials
+
+### Top-of-the-Hour Jingles Not Playing
+- Verify the directory set in `top_of_the_hour` exists and contains MP3 files
+- Run `scan_media.py` to index the files and link them to the station
 
 ### Performance Issues
 - Use a Raspberry Pi 3 or newer
