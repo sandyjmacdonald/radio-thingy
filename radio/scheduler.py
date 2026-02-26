@@ -268,8 +268,13 @@ class Scheduler:
 
         # Break if pending
         if pending_break and int(cfg.break_length_s or 0) > 0:
+            # If an ident just played (between-song ident from queue), skip the leading ident
+            # in the break queue to avoid two idents in a row.
+            last_kind = str(st["kind"] or "") if st else ""
+            skip_leading_ident = last_kind == "ident"
             queue_ids = self._build_ident_plus_commercials_queue(
-                station_name, sid, target_s=float(cfg.break_length_s), slop_s=self.break_slop_s
+                station_name, sid, target_s=float(cfg.break_length_s), slop_s=self.break_slop_s,
+                skip_leading_ident=skip_leading_ident,
             )
             if queue_ids:
                 first_id = int(queue_ids[0])
@@ -573,7 +578,8 @@ class Scheduler:
     # -------------------- Queue Builders --------------------
 
     def _build_ident_plus_commercials_queue(
-        self, station_name: str, sid: int, target_s: float, slop_s: float
+        self, station_name: str, sid: int, target_s: float, slop_s: float,
+        *, skip_leading_ident: bool = False,
     ) -> list[int]:
         target_s = max(0.0, float(target_s))
         max_total = target_s + float(slop_s)
@@ -581,10 +587,11 @@ class Scheduler:
         queue: list[int] = []
         total = 0.0
 
-        ident = helpers.random_station_media(self.con, sid, "ident")
-        if ident:
-            queue.append(int(ident["id"]))
-            total += float(ident["duration_s"] or 0.0)
+        if not skip_leading_ident:
+            ident = helpers.random_station_media(self.con, sid, "ident")
+            if ident:
+                queue.append(int(ident["id"]))
+                total += float(ident["duration_s"] or 0.0)
 
         commercials = helpers.station_media_pool(self.con, sid, "commercial", limit=800)
         if not commercials:
