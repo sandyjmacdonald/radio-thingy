@@ -10,7 +10,7 @@ PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS media (
   id INTEGER PRIMARY KEY,
   path TEXT NOT NULL UNIQUE,
-  kind TEXT NOT NULL CHECK(kind IN ('song','commercial','ident','noise','interstitial')),
+  kind TEXT NOT NULL CHECK(kind IN ('song','commercial','ident','noise','overlay','top_of_hour')),
   artist TEXT,
   title TEXT,
   tag TEXT,
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS stations (
   break_frequency_s INTEGER DEFAULT 0,
   break_length_s INTEGER DEFAULT 0,
   ident_frequency_s INTEGER DEFAULT 0,
-  ident_pad_s REAL DEFAULT 0,
-  ident_duck REAL DEFAULT 0.4,
-  ident_ramp_s REAL DEFAULT 0.5
+  overlay_pad_s REAL DEFAULT 0,
+  overlay_duck REAL DEFAULT 0.4,
+  overlay_ramp_s REAL DEFAULT 0.5
 );
 
 CREATE TABLE IF NOT EXISTS station_media (
@@ -64,12 +64,12 @@ CREATE TABLE IF NOT EXISTS station_state (
   last_toth_slot_ts REAL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS station_interstitials (
+CREATE TABLE IF NOT EXISTS station_overlays (
   id INTEGER PRIMARY KEY,
   station_id INTEGER NOT NULL REFERENCES stations(id) ON DELETE CASCADE,
   schedule_key TEXT NOT NULL,
-  interstitials_dir TEXT NOT NULL,
-  interstitials_probability REAL DEFAULT 0.0,
+  overlays_dir TEXT NOT NULL,
+  overlays_probability REAL DEFAULT 0.0,
   UNIQUE(station_id, schedule_key)
 );
 
@@ -83,6 +83,63 @@ def _ensure_column(con: sqlite3.Connection, table: str, col: str, decl: str) -> 
     if col not in cols:
         con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
+def _migrate_media_kinds(con: sqlite3.Connection) -> None:
+    """Recreate media table replacing kind='interstitial' with 'overlay'/'top_of_hour'."""
+    row = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='media'"
+    ).fetchone()
+    if not row or "'interstitial'" not in (row["sql"] or ""):
+        return
+    con.executescript("""
+        PRAGMA foreign_keys=OFF;
+        ALTER TABLE media RENAME TO _media_migrate;
+        CREATE TABLE media (
+          id INTEGER PRIMARY KEY,
+          path TEXT NOT NULL UNIQUE,
+          kind TEXT NOT NULL CHECK(kind IN ('song','commercial','ident','noise','overlay','top_of_hour')),
+          artist TEXT,
+          title TEXT,
+          tag TEXT,
+          duration_s REAL,
+          mtime INTEGER
+        );
+        INSERT INTO media(id, path, kind, artist, title, tag, duration_s, mtime)
+        SELECT id, path,
+               CASE WHEN kind = 'interstitial' THEN 'overlay' ELSE kind END,
+               artist, title, tag, duration_s, mtime
+        FROM _media_migrate;
+        DROP TABLE _media_migrate;
+        PRAGMA foreign_keys=ON;
+    """)
+
+def _migrate_stations_overlay_columns(con: sqlite3.Connection) -> None:
+    """Add overlay_pad_s/overlay_duck/overlay_ramp_s columns, copying from old ident_ columns."""
+    cols = {r["name"] for r in con.execute("PRAGMA table_info(stations)")}
+    if "overlay_pad_s" not in cols:
+        con.execute("ALTER TABLE stations ADD COLUMN overlay_pad_s REAL DEFAULT 0")
+        if "ident_pad_s" in cols:
+            con.execute("UPDATE stations SET overlay_pad_s = ident_pad_s")
+    if "overlay_duck" not in cols:
+        con.execute("ALTER TABLE stations ADD COLUMN overlay_duck REAL DEFAULT 0.4")
+        if "ident_duck" in cols:
+            con.execute("UPDATE stations SET overlay_duck = ident_duck")
+    if "overlay_ramp_s" not in cols:
+        con.execute("ALTER TABLE stations ADD COLUMN overlay_ramp_s REAL DEFAULT 0.5")
+        if "ident_ramp_s" in cols:
+            con.execute("UPDATE stations SET overlay_ramp_s = ident_ramp_s")
+
+def _migrate_station_interstitials_table(con: sqlite3.Connection) -> None:
+    """Rename station_interstitials to station_overlays and update column names."""
+    tables = {r["name"] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "station_interstitials" in tables and "station_overlays" not in tables:
+        con.execute("ALTER TABLE station_interstitials RENAME TO station_overlays")
+    if "station_overlays" in tables or "station_interstitials" not in tables:
+        cols = {r["name"] for r in con.execute("PRAGMA table_info(station_overlays)")} if "station_overlays" in tables else set()
+        if "interstitials_dir" in cols and "overlays_dir" not in cols:
+            con.execute("ALTER TABLE station_overlays RENAME COLUMN interstitials_dir TO overlays_dir")
+        if "interstitials_probability" in cols and "overlays_probability" not in cols:
+            con.execute("ALTER TABLE station_overlays RENAME COLUMN interstitials_probability TO overlays_probability")
+
 def connect(db_path: str) -> sqlite3.Connection:
     """Open (or create) the database at db_path, apply the schema, and run column migrations."""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -95,6 +152,11 @@ def connect(db_path: str) -> sqlite3.Connection:
     _ensure_column(con, "station_state", "queue_index", "INTEGER DEFAULT 0")
     _ensure_column(con, "station_state", "last_ident_ts", "REAL DEFAULT 0")
     _ensure_column(con, "station_state", "last_toth_slot_ts", "REAL DEFAULT 0")
+
+    _migrate_media_kinds(con)
+    _migrate_stations_overlay_columns(con)
+    _migrate_station_interstitials_table(con)
+
     con.commit()
 
     return con

@@ -101,11 +101,11 @@ def scan_station_media_dir(con, station_id: int, directory: str, kind: str, *, v
     return n
 
 
-def scan_schedule_interstitials(
+def scan_schedule_overlays(
     con, station_id: int, cfg: StationConfig, *, verbose: bool
 ) -> dict[str, int]:
     """
-    Scan all interstitial directories referenced in the schedule.
+    Scan all overlay directories referenced in the schedule.
     Returns a dict mapping schedule_key -> count of files scanned.
     """
     results = {}
@@ -113,27 +113,27 @@ def scan_schedule_interstitials(
 
     for day, hour_map in cfg.schedule.items():
         for hour, entry in hour_map.items():
-            if not entry.interstitials_dir or entry.interstitials_dir in seen_dirs:
+            if not entry.overlays_dir or entry.overlays_dir in seen_dirs:
                 continue
 
-            seen_dirs.add(entry.interstitials_dir)
+            seen_dirs.add(entry.overlays_dir)
             schedule_key = f"{day}-{hour}"
 
             con.execute(
                 """
-                INSERT INTO station_interstitials(
-                    station_id, schedule_key, interstitials_dir, interstitials_probability
+                INSERT INTO station_overlays(
+                    station_id, schedule_key, overlays_dir, overlays_probability
                 )
                 VALUES(?,?,?,?)
                 ON CONFLICT(station_id, schedule_key) DO UPDATE SET
-                    interstitials_dir=excluded.interstitials_dir,
-                    interstitials_probability=excluded.interstitials_probability
+                    overlays_dir=excluded.overlays_dir,
+                    overlays_probability=excluded.overlays_probability
                 """,
-                (station_id, schedule_key, entry.interstitials_dir, entry.interstitials_probability)
+                (station_id, schedule_key, entry.overlays_dir, entry.overlays_probability)
             )
 
             n = scan_station_media_dir(
-                con, station_id, entry.interstitials_dir, "interstitial", verbose=verbose
+                con, station_id, entry.overlays_dir, "overlay", verbose=verbose
             )
             results[schedule_key] = n
 
@@ -149,7 +149,7 @@ def load_station_cfgs(patterns: list[str]) -> list[StationConfig]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Scan songs/idents/commercials into radio.db")
+    ap = argparse.ArgumentParser(description="Scan songs/idents/overlays/commercials into radio.db")
     ap.add_argument("--db", default="/home/radio/radio-code/radio.db")
     ap.add_argument("--music", required=True, help="Root containing tag subfolders (recursive)")
     ap.add_argument("--stations", nargs="+", required=True, help="Station TOML paths or globs")
@@ -170,15 +170,15 @@ def main() -> int:
 
         n_idents = scan_station_media_dir(con, sid, cfg.idents_dir, "ident", verbose=args.verbose)
         n_commercials = scan_station_media_dir(con, sid, cfg.commercials_dir, "commercial", verbose=args.verbose)
-        n_toth = scan_station_media_dir(con, sid, cfg.top_of_the_hour, "interstitial", verbose=args.verbose)
+        n_toth = scan_station_media_dir(con, sid, cfg.top_of_the_hour, "top_of_hour", verbose=args.verbose)
         print(f"  idents: {n_idents}")
         print(f"  commercials: {n_commercials}")
         print(f"  top_of_the_hour: {n_toth}")
 
-        interstitial_counts = scan_schedule_interstitials(con, sid, cfg, verbose=args.verbose)
-        if interstitial_counts:
-            print(f"  interstitials:")
-            for key, n in interstitial_counts.items():
+        overlay_counts = scan_schedule_overlays(con, sid, cfg, verbose=args.verbose)
+        if overlay_counts:
+            print(f"  overlays:")
+            for key, n in overlay_counts.items():
                 print(f"    {key}: {n}")
 
     con.commit()

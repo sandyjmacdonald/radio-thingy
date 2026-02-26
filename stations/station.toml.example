@@ -14,7 +14,7 @@ freq = 99.9        # FM frequency
 # ============================================================================
 
 # Directory containing station identification audio files (MP3)
-# These are short clips that identify your station
+# Idents play between songs as standalone clips
 idents_dir = "/path/to/media/idents/MYCALL"
 
 # Directory containing commercial/advertisement audio files (MP3)
@@ -33,22 +33,37 @@ break_frequency_s = 900
 break_length_s = 60
 
 # ============================================================================
-# STATION IDENT OVERLAY CONFIGURATION
+# STATION IDENT CONFIGURATION
 # ============================================================================
 
-# How often to overlay a station ident on top of a song (in seconds)
+# How often to play a station ident between songs (in seconds)
 # 180 = 3 minutes, 300 = 5 minutes
+# When due, the ident is queued to play after the current song ends
 ident_frequency_s = 180
 
-# How many seconds into the song to start the ident overlay
-ident_pad_s = 2.0
+# ============================================================================
+# OVERLAY CONFIGURATION
+# ============================================================================
+# Overlays are audio clips that play over the top of a song with ducking.
+# They are configured per schedule entry (see schedule section below).
 
-# Volume reduction factor for music when ident is playing (0.0-1.0)
-# 0.4 = music plays at 40% volume during ident
-ident_duck = 0.4
+# How many seconds into the song to start the overlay
+overlay_pad_s = 2.0
+
+# Volume reduction factor for music when overlay is playing (0.0-1.0)
+# 0.4 = music plays at 40% volume during overlay
+overlay_duck = 0.4
 
 # How long the volume fade takes (in seconds)
-ident_ramp_s = 0.5
+overlay_ramp_s = 0.5
+
+# ============================================================================
+# TOP-OF-THE-HOUR JINGLES
+# ============================================================================
+
+# Directory containing top-of-the-hour jingle MP3s (optional)
+# A random file from this directory plays as the first item of every new hour
+# top_of_the_hour = "/path/to/media/toth/MYCALL"
 
 # ============================================================================
 # PROGRAMMING SCHEDULE
@@ -57,15 +72,15 @@ ident_ramp_s = 0.5
 # Hours are 0-23 (24-hour format)
 # Tags correspond to subdirectory names in your music library
 #
-# NEW: Interstitials support
-# - interstitials = "path/to/directory" (directory with interstitial MP3s)
-# - interstitials_probability = 0.0-1.0 (chance of playing between songs)
-#   * 0.0 = never play
-#   * 1.0 = always play after every song
-#   * 0.3 = 30% chance after each song
+# Overlay support (overlays play over the top of songs with audio ducking):
+# - overlays = "path/to/directory" (directory with overlay MP3s)
+# - overlays_probability = 0.0-1.0 (chance of overlaying on each song)
+#   * 0.0 = never play overlays
+#   * 1.0 = overlay on every song
+#   * 0.3 = 30% chance on each song
 
 [schedule.monday]
-# Early morning - calm music, occasional promos
+# Early morning - calm music, no overlays
 0 = { tags = "ambient" }
 1 = { tags = "ambient" }
 2 = { tags = "ambient" }
@@ -73,18 +88,18 @@ ident_ramp_s = 0.5
 4 = { tags = "ambient" }
 5 = { tags = "ambient" }
 
-# Morning drive - upbeat music with frequent station promos
-6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+# Morning drive - upbeat music with frequent overlay promos
+6 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+7 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+8 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
 
 # Mid-morning - mixed content with occasional announcements
-9 = { tags = ["pop", "rock"], interstitials = "/path/to/interstitials/general", interstitials_probability = 0.2 }
-10 = { tags = ["pop", "rock"], interstitials = "/path/to/interstitials/general", interstitials_probability = 0.2 }
+9 = { tags = ["pop", "rock"], overlays = "/path/to/overlays/general", overlays_probability = 0.2 }
+10 = { tags = ["pop", "rock"], overlays = "/path/to/overlays/general", overlays_probability = 0.2 }
 11 = { tags = ["pop", "rock"] }
 
 # Lunch time - upbeat mix
-12 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/midday", interstitials_probability = 0.3 }
+12 = { tags = ["pop", "dance"], overlays = "/path/to/overlays/midday", overlays_probability = 0.3 }
 13 = { tags = ["pop", "dance"] }
 
 # Afternoon - variety
@@ -93,15 +108,15 @@ ident_ramp_s = 0.5
 16 = { tags = ["rock", "indie"] }
 
 # Evening drive - energetic rock with promos
-17 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 0.4 }
-18 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 0.4 }
-19 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 0.4 }
+17 = { tags = "rock", overlays = "/path/to/overlays/evening", overlays_probability = 0.4 }
+18 = { tags = "rock", overlays = "/path/to/overlays/evening", overlays_probability = 0.4 }
+19 = { tags = "rock", overlays = "/path/to/overlays/evening", overlays_probability = 0.4 }
 
-# Prime time - special programming with guaranteed interstitials
-20 = { tags = ["rock", "classic"], interstitials = "/path/to/interstitials/primetime", interstitials_probability = 1.0 }
-21 = { tags = ["rock", "classic"], interstitials = "/path/to/interstitials/primetime", interstitials_probability = 1.0 }
+# Prime time - special programming with guaranteed overlays
+20 = { tags = ["rock", "classic"], overlays = "/path/to/overlays/primetime", overlays_probability = 1.0 }
+21 = { tags = ["rock", "classic"], overlays = "/path/to/overlays/primetime", overlays_probability = 1.0 }
 
-# Late night - chill vibes, no interruptions
+# Late night - chill vibes, no overlays
 22 = { tags = "chill" }
 23 = { tags = "chill" }
 
@@ -113,9 +128,9 @@ ident_ramp_s = 0.5
 3 = { tags = "ambient" }
 4 = { tags = "ambient" }
 5 = { tags = "ambient" }
-6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+6 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+7 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+8 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
 9 = { tags = ["pop", "rock"] }
 10 = { tags = ["pop", "rock"] }
 11 = { tags = ["pop", "rock"] }
@@ -140,12 +155,12 @@ ident_ramp_s = 0.5
 3 = { tags = "ambient" }
 4 = { tags = "ambient" }
 5 = { tags = "ambient" }
-6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-9 = { tags = "indie", interstitials = "/path/to/interstitials/newmusic", interstitials_probability = 0.7 }
-10 = { tags = "indie", interstitials = "/path/to/interstitials/newmusic", interstitials_probability = 0.7 }
-11 = { tags = "indie", interstitials = "/path/to/interstitials/newmusic", interstitials_probability = 0.7 }
+6 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+7 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+8 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+9 = { tags = "indie", overlays = "/path/to/overlays/newmusic", overlays_probability = 0.7 }
+10 = { tags = "indie", overlays = "/path/to/overlays/newmusic", overlays_probability = 0.7 }
+11 = { tags = "indie", overlays = "/path/to/overlays/newmusic", overlays_probability = 0.7 }
 12 = { tags = ["pop", "dance"] }
 13 = { tags = ["pop", "dance"] }
 14 = { tags = ["rock", "indie"] }
@@ -166,9 +181,9 @@ ident_ramp_s = 0.5
 3 = { tags = "ambient" }
 4 = { tags = "ambient" }
 5 = { tags = "ambient" }
-6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+6 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+7 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+8 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
 9 = { tags = ["pop", "rock"] }
 10 = { tags = ["pop", "rock"] }
 11 = { tags = ["pop", "rock"] }
@@ -193,9 +208,9 @@ ident_ramp_s = 0.5
 3 = { tags = "ambient" }
 4 = { tags = "ambient" }
 5 = { tags = "ambient" }
-6 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+6 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+7 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+8 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
 9 = { tags = ["pop", "dance"] }
 10 = { tags = ["pop", "dance"] }
 11 = { tags = ["pop", "dance"] }
@@ -204,13 +219,13 @@ ident_ramp_s = 0.5
 14 = { tags = ["pop", "dance"] }
 15 = { tags = ["pop", "dance"] }
 16 = { tags = ["pop", "dance"] }
-17 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/weekend", interstitials_probability = 0.6 }
-18 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/weekend", interstitials_probability = 0.6 }
-19 = { tags = ["pop", "dance"], interstitials = "/path/to/interstitials/weekend", interstitials_probability = 0.6 }
-20 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
-21 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
-22 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
-23 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 0.8 }
+17 = { tags = ["pop", "dance"], overlays = "/path/to/overlays/weekend", overlays_probability = 0.6 }
+18 = { tags = ["pop", "dance"], overlays = "/path/to/overlays/weekend", overlays_probability = 0.6 }
+19 = { tags = ["pop", "dance"], overlays = "/path/to/overlays/weekend", overlays_probability = 0.6 }
+20 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 0.8 }
+21 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 0.8 }
+22 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 0.8 }
+23 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 0.8 }
 
 [schedule.saturday]
 # Saturday - Relaxed weekend vibes
@@ -234,10 +249,10 @@ ident_ramp_s = 0.5
 17 = { tags = "rock" }
 18 = { tags = "rock" }
 19 = { tags = ["rock", "dance"] }
-20 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
-21 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
-22 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
-23 = { tags = "dance", interstitials = "/path/to/interstitials/party", interstitials_probability = 1.0 }
+20 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 1.0 }
+21 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 1.0 }
+22 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 1.0 }
+23 = { tags = "dance", overlays = "/path/to/overlays/party", overlays_probability = 1.0 }
 
 [schedule.sunday]
 # Sunday - Mellow and chill
@@ -281,8 +296,8 @@ ident_ramp_s = 0.5
 #   ├── ambient/
 #   └── etc/
 #
-# Interstitials Directory Structure:
-#   /path/to/interstitials/
+# Overlay Directory Structure:
+#   /path/to/overlays/
 #   ├── morning/
 #   │   ├── morning-promo-1.mp3
 #   │   └── morning-promo-2.mp3
@@ -293,13 +308,12 @@ ident_ramp_s = 0.5
 #       ├── party-hype.mp3
 #       └── weekend-special.mp3
 #
-# Interstitials Probability Examples:
-#   - 0.0 = Never play interstitials
+# Overlay Probability Examples:
+#   - 0.0 = Never play overlays
 #   - 0.2 = 20% chance (roughly 1 in 5 songs)
 #   - 0.5 = 50% chance (every other song on average)
-#   - 1.0 = Always play after every song
+#   - 1.0 = Always overlay every song
 #
 # After creating your station config, scan it with:
 #   python -m radio.scan_media --db /path/to/radio.db \
 #     --music /path/to/music --stations stations/MYCALL.toml
-

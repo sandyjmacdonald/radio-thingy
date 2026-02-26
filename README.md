@@ -1,10 +1,10 @@
 # Radio Thingy 📻
 
-A Python-based FM radio station emulator that brings the nostalgic experience of classic FM radio to your Raspberry Pi. Tune between multiple stations, each with its own frequency, programming schedule, station identifications, interstitials, and commercial breaks.
+A Python-based FM radio station emulator that brings the nostalgic experience of classic FM radio to your Raspberry Pi. Tune between multiple stations, each with its own frequency, programming schedule, station identifications, overlays, and commercial breaks.
 
 ## Overview
 
-Radio Thingy simulates a complete FM radio ecosystem with multiple stations broadcasting on different frequencies. Each station can have its own 24/7 programming schedule, mixing music with authentic radio station elements like idents (station identifications), interstitials (promos and announcements), and commercial breaks.
+Radio Thingy simulates a complete FM radio ecosystem with multiple stations broadcasting on different frequencies. Each station can have its own 24/7 programming schedule, mixing music with authentic radio station elements like idents (station identifications), overlays (promos and announcements played over songs), and commercial breaks.
 
 Experience the joy of tuning through static between stations, catching your favourite music, and hearing those classic radio elements that made FM radio so engaging.
 
@@ -22,20 +22,21 @@ Experience the joy of tuning through static between stations, catching your favo
 - Tag-based music selection from your library
 
 ### 🎙️ Station Identifications (Idents)
-- Periodic station identification overlays
-- Customisable frequency and timing
-- Audio ducking — music volume reduces during ident playback
-- Configurable fade in/out for smooth transitions
+- Station idents play between songs as standalone clips
+- Configurable frequency (how often they appear)
+- Perfect for call-letter IDs, frequency stabs, and short station branding clips
 
-### 🎬 Interstitials
-- Play short promotional clips between songs
-- Configure per hour and per music tag
+### 🎬 Overlays
+- Short audio clips that play over the top of a song with audio ducking
+- Music volume reduces during overlay playback for a professional sound
+- Configure per schedule entry — different overlays for different hours/days
 - Adjustable probability (0.0 to 1.0) for how often they play
-- Perfect for "Now playing your favourite rock hits!" style announcements
+- Configurable fade in/out and pad time for smooth transitions
+- Perfect for "You're listening to MYCALL 99.9 FM!" style announcements
 
 ### ⏰ Top-of-the-Hour Jingles
 
-A single MP3 (chosen at random from a directory) plays as the very first item whenever a new hour slot begins. Unlike interstitials, there is no probability gate — the jingle always plays. Configure the directory with `top_of_the_hour` in your station TOML.
+A single MP3 (chosen at random from a directory) plays as the very first item whenever a new hour slot begins. Unlike overlays, there is no probability gate — the jingle always plays. Configure the directory with `top_of_the_hour` in your station TOML.
 
 ### 📢 Commercial Breaks
 - Scheduled commercial breaks at configurable intervals
@@ -53,7 +54,7 @@ A single MP3 (chosen at random from a directory) plays as the very first item wh
 - Intelligent song selection based on duration to fit time slots
 - Avoids playing the same song on multiple stations simultaneously
 - Per-station seeded randomisation for variety
-- Queue system for seamless playback of breaks and interstitials
+- Queue system for seamless playback of breaks and idents
 
 ## Hardware Requirements
 
@@ -146,7 +147,7 @@ Organise your media files as follows:
 │   ├── rock/
 │   ├── jazz/
 │   └── ...
-├── idents/                   # Station identifications
+├── idents/                   # Station identifications (play between songs)
 │   ├── MYCALL/
 │   │   ├── ident1.mp3
 │   │   └── ident2.mp3
@@ -164,7 +165,7 @@ Organise your media files as follows:
 │   │   └── toth2.mp3
 │   └── OTHERCALL/
 │       └── toth.mp3
-└── interstitials/            # Promotional clips
+└── overlays/                 # Voice-over clips that play over songs
     ├── morning/
     │   ├── morning-show-promo.mp3
     │   └── wake-up-message.mp3
@@ -194,33 +195,34 @@ commercials_dir = "/path/to/media/commercials/MYCALL"
 break_frequency_s = 900    # Commercial break every 15 minutes
 break_length_s = 60        # 60-second breaks
 
-ident_frequency_s = 180    # Station ID every 3 minutes
-ident_pad_s = 2.0          # Start 2 seconds into the song
-ident_duck = 0.4           # Reduce music to 40% during ident
-ident_ramp_s = 0.5         # 0.5 second fade
+ident_frequency_s = 180    # Station ident between songs every 3 minutes
+
+overlay_pad_s = 2.0        # Start overlay 2 seconds into the song
+overlay_duck = 0.4         # Reduce music to 40% during overlay
+overlay_ramp_s = 0.5       # 0.5 second fade
 
 [schedule.monday]
-# Morning drive - frequent promos
-7 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
-8 = { tags = "pop", interstitials = "/path/to/interstitials/morning", interstitials_probability = 0.5 }
+# Morning drive - frequent overlays
+7 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
+8 = { tags = "pop", overlays = "/path/to/overlays/morning", overlays_probability = 0.5 }
 
-# Midday - occasional promos
-12 = { tags = "pop", interstitials = "/path/to/interstitials/midday", interstitials_probability = 0.2 }
+# Midday - occasional overlays
+12 = { tags = "pop", overlays = "/path/to/overlays/midday", overlays_probability = 0.2 }
 
-# Evening - different content, always play
-18 = { tags = "rock", interstitials = "/path/to/interstitials/evening", interstitials_probability = 1.0 }
+# Evening - different content, always overlay
+18 = { tags = "rock", overlays = "/path/to/overlays/evening", overlays_probability = 1.0 }
 
-# Late night - no interstitials
+# Late night - no overlays
 23 = { tags = "pop" }
 ```
 
-#### Interstitial Schedule Parameters
+#### Overlay Schedule Parameters
 
-- **`interstitials`**: Directory path containing the interstitial MP3 files for this hour
-- **`interstitials_probability`**: Float between `0.0` and `1.0` controlling how often they play
-  - `0.0` — never play interstitials
-  - `0.3` — 30% chance of playing one after each song
-  - `1.0` — play an interstitial after every song
+- **`overlays`**: Directory path containing the overlay MP3 files for this hour
+- **`overlays_probability`**: Float between `0.0` and `1.0` controlling how often they play
+  - `0.0` — never play overlays
+  - `0.3` — 30% chance of overlaying on each song
+  - `1.0` — overlay every song
 
 See `stations/station.toml.example` for a complete example with detailed comments.
 
@@ -239,7 +241,7 @@ python -m radio.scan_media \
 This will:
 - Index all MP3 files in your music library
 - Scan station idents and commercials
-- Scan interstitials from schedule configurations
+- Scan overlays from schedule configurations
 - Build the database for playback
 
 You can rescan any time you add new media files.
@@ -292,7 +294,7 @@ curl http://localhost:8000/stations
 
 ### `GET /status`
 
-Returns the current state of the dial — what is playing and what is queued next.
+Returns the current state of the dial — what is playing right now.
 
 ```bash
 curl http://localhost:8000/status
@@ -311,11 +313,6 @@ curl http://localhost:8000/status
     "ends_at": 1234567950.456,
     "duration_s": 243.5,
     "elapsed_s": 60.3
-  },
-  "up_next": {
-    "type": "interstitial",
-    "artist": null,
-    "title": "Morning Promo"
   }
 }
 ```
@@ -326,8 +323,7 @@ curl http://localhost:8000/status
 | `station` | Name of the nearest station |
 | `tuned` | `true` when the dial is close enough to a station to hear it |
 | `now_playing` | `null` when not tuned; `{"type": "noise"}` when tuned to static; full object when playing |
-| `up_next` | Next item already in the queue, or `null` if nothing is queued yet |
-| `type` | One of: `song`, `interstitial`, `commercial`, `ident`, `noise` |
+| `type` | One of: `song`, `overlay`, `ident`, `commercial`, `top_of_hour`, `noise` |
 | `elapsed_s` | Seconds since the current track started, computed at request time |
 
 **Optional `?station=` parameter**
@@ -338,7 +334,7 @@ Pass a station name to query any station regardless of what is currently tuned:
 curl "http://localhost:8000/status?station=WXYZ"
 ```
 
-This always returns `now_playing` and `up_next` for the named station. `tuned` reflects whether the dial is actually on that station. Returns `404` for unknown station names.
+This always returns `now_playing` for the named station. `tuned` reflects whether the dial is actually on that station. Returns `404` for unknown station names.
 
 ---
 
@@ -382,26 +378,36 @@ Station schedules specify which tags to play each hour:
 8 = { tags = ["pop", "rock"] }          # Mix of pop and rock
 ```
 
-### Interstitials
+### Station Idents
 
-Interstitials are short audio clips (typically 5–30 seconds) that play between songs. They're perfect for:
+Idents are short station identification clips that play **between songs** as standalone items. They're triggered by `ident_frequency_s` — when enough time has passed since the last ident, one is queued to play after the current song finishes. They're perfect for:
+- Call-letter stings: "KXYZ"
+- Frequency tags: "99.9 FM"
+- Short branding jingles
+
+During commercial breaks, an ident plays as the first item of the break (before the commercials).
+
+### Overlays
+
+Overlays are audio clips that play **over the top of a song** while it continues underneath at reduced volume. They're configured per schedule entry and triggered by a probability roll when each song starts. They're perfect for:
 - "You're listening to MYCALL, 99.9 FM!"
 - "All your favourite rock hits, coming up next"
 - "It's 3 PM, time for the afternoon show"
 - Station promos and special announcements
 
-#### How It Works
+#### How Overlays Work
 
-1. **Scheduler decision**: When the scheduler selects a song, it checks the current schedule entry's interstitials configuration
-2. **Probability roll**: The station's random number generator is used to roll against `interstitials_probability`
-3. **Queue building**: If the roll succeeds, a random interstitial is picked from the configured directory and queued after the song
-4. **Playback**: The song plays first, then the interstitial plays automatically
+1. **Scheduler decision**: When a song starts, the scheduler checks the current schedule entry's overlay configuration
+2. **Probability roll**: The station's random number generator rolls against `overlays_probability`
+3. **Scheduled**: If the roll succeeds, a random overlay is picked from the configured directory and scheduled to fire `overlay_pad_s` seconds into the song
+4. **Ducking**: When the overlay fires, music fades down to `overlay_duck` volume over `overlay_ramp_s` seconds, the overlay plays, then music fades back up
 
 #### Notes
 
 - The same directory can be reused across multiple schedule entries
-- Each station has its own random number generator, so interstitials on different stations won't synchronise
-- The probability is evaluated fresh after each song, so the pattern stays unpredictable
+- Each station has its own random number generator, so overlays on different stations won't synchronise
+- The probability is evaluated fresh when each song starts, so the pattern stays unpredictable
+- After a commercial break, an overlay is forced on the next song
 
 ### Top-of-the-Hour Jingles
 
@@ -426,31 +432,22 @@ Example media tree:
         └── top-of-hour-3.mp3
 ```
 
-### Station Idents
-
-Station idents are longer identification announcements that overlay on top of songs. They typically include:
-- Call letters: "KXYZ"
-- Frequency: "99.9 FM"
-- Slogan: "Your home for classic rock"
-
-The music ducks (reduces volume) during ident playback for a professional sound.
-
 ### Commercial Breaks
 
 Commercial breaks are automatically triggered based on `break_frequency_s`. When a break is due:
 1. Current song finishes
 2. Station ident plays
 3. Commercials play to fill `break_length_s`
-4. Music resumes with an ident overlay
+4. Music resumes with an overlay forced on the next song
 
 ## Database Schema
 
 The system uses SQLite to track:
-- **Media**: All songs, idents, commercials, and interstitials
+- **Media**: All songs, idents, overlays, commercials, and top-of-hour jingles
 - **Stations**: Station configurations and settings
 - **Station Media**: Links between stations and their media
 - **Station State**: Current playback state per station
-- **Station Interstitials**: Interstitial configurations per schedule entry
+- **Station Overlays**: Overlay configurations per schedule entry
 - **Plays**: Playback history
 
 ## Development
@@ -505,10 +502,16 @@ python -m radio.scan_media --help
 - Check that music exists for configured tags
 - Run scanner with `--verbose` to see what's being indexed
 
-### Interstitials Not Playing
-- Verify `interstitials_probability` is > 0
-- Check that the interstitials directory exists and contains MP3 files
-- Rescan media after adding interstitials
+### Overlays Not Playing
+- Verify `overlays_probability` is > 0
+- Check that the overlays directory exists and contains MP3 files
+- Rescan media after adding overlays
+- Overlays only fire when a station is actively being listened to
+
+### Idents Not Playing Between Songs
+- Verify `ident_frequency_s` is set and > 0
+- Check that `idents_dir` exists and contains MP3 files
+- Rescan media after adding idents
 
 ### Top-of-the-Hour Jingles Not Playing
 - Verify the directory set in `top_of_the_hour` exists and contains MP3 files

@@ -48,10 +48,10 @@ def _as_str(v: Any) -> str:
 
 @dataclass(frozen=True)
 class ScheduleEntry:
-    """Represents a single schedule entry with tags and optional interstitials."""
+    """Represents a single schedule entry with tags and optional overlays."""
     tags: list[str]
-    interstitials_dir: str = ""
-    interstitials_probability: float = 0.0
+    overlays_dir: str = ""
+    overlays_probability: float = 0.0
 
 
 def _normalize_schedule(raw: Any) -> dict[str, dict[int, ScheduleEntry]]:
@@ -60,7 +60,7 @@ def _normalize_schedule(raw: Any) -> dict[str, dict[int, ScheduleEntry]]:
 
       [schedule.monday]
       7 = { tags = "pop" }
-      8 = { tags = ["pop", "rock"], interstitials = "KHHZ-pop-interstitials", interstitials_probability = 0.3 }
+      8 = { tags = ["pop", "rock"], overlays = "KHHZ-pop-overlays", overlays_probability = 0.3 }
 
     Produces: {"monday": {7: ScheduleEntry(...), 8: ScheduleEntry(...)}}
     """
@@ -86,20 +86,23 @@ def _normalize_schedule(raw: Any) -> dict[str, dict[int, ScheduleEntry]]:
                 continue
 
             tags: list[str] = []
-            interstitials_dir = ""
-            interstitials_probability = 0.0
-            
+            overlays_dir = ""
+            overlays_probability = 0.0
+
             if isinstance(rule, dict):
                 tags = _as_list(rule.get("tags"))
-                interstitials_dir = _as_str(rule.get("interstitials")).strip()
-                prob = rule.get("interstitials_probability")
+                # Accept both new name and old name for backwards compatibility
+                overlays_dir = _as_str(
+                    rule.get("overlays") or rule.get("interstitials")
+                ).strip()
+                prob = rule.get("overlays_probability") or rule.get("interstitials_probability")
                 if prob is not None:
-                    interstitials_probability = max(0.0, min(1.0, _as_float(prob, 0.0)))
-            
+                    overlays_probability = max(0.0, min(1.0, _as_float(prob, 0.0)))
+
             out[dkey][hr] = ScheduleEntry(
                 tags=tags,
-                interstitials_dir=interstitials_dir,
-                interstitials_probability=interstitials_probability
+                overlays_dir=overlays_dir,
+                overlays_probability=overlays_probability
             )
 
     return out
@@ -120,11 +123,13 @@ class StationConfig:
     break_frequency_s: int = 0
     break_length_s: int = 0
 
-    # Ident overlay config
+    # Ident frequency (how often to play a between-song ident)
     ident_frequency_s: int = 0
-    ident_pad_s: float = 0.0
-    ident_duck: float = 0.4
-    ident_ramp_s: float = 0.5
+
+    # Overlay config (overlays play over songs)
+    overlay_pad_s: float = 0.0
+    overlay_duck: float = 0.4
+    overlay_ramp_s: float = 0.5
 
     # Top-of-the-hour jingle directory
     top_of_the_hour: str = ""
@@ -148,23 +153,24 @@ def load_station_toml(path: str) -> StationConfig:
       break_length_s = 60
 
       ident_frequency_s = 180
-      ident_pad_s = 2.0
-      ident_duck = 0.4
-      ident_ramp_s = 0.5
+
+      overlay_pad_s = 2.0
+      overlay_duck = 0.4
+      overlay_ramp_s = 0.5
 
       [schedule.monday]
-      7 = { tags = "pop", interstitials = "KHMR-pop-interstitials", interstitials_probability = 0.3 }
+      7 = { tags = "pop", overlays = "KHMR-pop-overlays", overlays_probability = 0.3 }
       8 = { tags = "pop" }
-      9 = { tags = ["pop", "rock"], interstitials = "KHMR-mixed", interstitials_probability = 1.0 }
+      9 = { tags = ["pop", "rock"], overlays = "KHMR-mixed", overlays_probability = 1.0 }
 
       [schedule.tuesday]
       11 = { tags = "jazz" }
 
     Notes:
-      - keys are tolerant: you can also use break_frequency, break_length, ident_frequency, ident_pad, etc.
+      - keys are tolerant: you can also use break_frequency, break_length, ident_frequency, etc.
       - schedule hour keys can be integers or strings.
-      - interstitials: directory path where interstitial files are located (optional)
-      - interstitials_probability: 0.0-1.0, probability of playing interstitial between songs (optional, default 0)
+      - overlays: directory path where overlay files are located (optional)
+      - overlays_probability: 0.0-1.0, probability of playing overlay over a song (optional, default 0)
     """
     p = Path(path).expanduser()
     data = tomllib.loads(p.read_text(encoding="utf-8"))
@@ -187,9 +193,19 @@ def load_station_toml(path: str) -> StationConfig:
     break_length_s = _as_int(data.get("break_length_s") or data.get("break_length") or 0, 0)
 
     ident_frequency_s = _as_int(data.get("ident_frequency_s") or data.get("ident_frequency") or 0, 0)
-    ident_pad_s = _as_float(data.get("ident_pad_s") or data.get("ident_pad") or 0.0, 0.0)
-    ident_duck = _as_float(data.get("ident_duck") or 0.4, 0.4)
-    ident_ramp_s = _as_float(data.get("ident_ramp_s") or data.get("ident_ramp") or 0.5, 0.5)
+
+    # Accept new names; fall back to old ident_ names for backwards compatibility
+    overlay_pad_s = _as_float(
+        data.get("overlay_pad_s") or data.get("overlay_pad")
+        or data.get("ident_pad_s") or data.get("ident_pad") or 0.0, 0.0
+    )
+    overlay_duck = _as_float(
+        data.get("overlay_duck") or data.get("ident_duck") or 0.4, 0.4
+    )
+    overlay_ramp_s = _as_float(
+        data.get("overlay_ramp_s") or data.get("overlay_ramp")
+        or data.get("ident_ramp_s") or data.get("ident_ramp") or 0.5, 0.5
+    )
 
     top_of_the_hour = _as_str(data.get("top_of_the_hour")).strip()
     schedule = _normalize_schedule(data.get("schedule"))
@@ -202,9 +218,9 @@ def load_station_toml(path: str) -> StationConfig:
         break_frequency_s=break_frequency_s,
         break_length_s=break_length_s,
         ident_frequency_s=ident_frequency_s,
-        ident_pad_s=ident_pad_s,
-        ident_duck=ident_duck,
-        ident_ramp_s=ident_ramp_s,
+        overlay_pad_s=overlay_pad_s,
+        overlay_duck=overlay_duck,
+        overlay_ramp_s=overlay_ramp_s,
         top_of_the_hour=top_of_the_hour,
         schedule=schedule,
     )

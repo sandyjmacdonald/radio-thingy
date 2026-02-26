@@ -13,7 +13,7 @@ class MediaInfo:
     """Metadata for a single media file, used to populate and update the media table."""
 
     path: str
-    kind: str               # song/commercial/ident/noise/interstitial
+    kind: str               # song/commercial/ident/noise/overlay/top_of_hour
     artist: Optional[str]
     title: Optional[str]
     tag: Optional[str]
@@ -65,14 +65,14 @@ def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
     Insert or update a station row from a config object.
 
     cfg must have attributes: name, freq, idents_dir, commercials_dir,
-    break_frequency_s, break_length_s, ident_frequency_s, ident_pad_s, ident_duck, ident_ramp_s.
+    break_frequency_s, break_length_s, ident_frequency_s, overlay_pad_s, overlay_duck, overlay_ramp_s.
     """
     con.execute(
         """
         INSERT INTO stations(
           name, freq, idents_dir, commercials_dir,
           break_frequency_s, break_length_s,
-          ident_frequency_s, ident_pad_s, ident_duck, ident_ramp_s
+          ident_frequency_s, overlay_pad_s, overlay_duck, overlay_ramp_s
         )
         VALUES(?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(name) DO UPDATE SET
@@ -82,9 +82,9 @@ def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
           break_frequency_s=excluded.break_frequency_s,
           break_length_s=excluded.break_length_s,
           ident_frequency_s=excluded.ident_frequency_s,
-          ident_pad_s=excluded.ident_pad_s,
-          ident_duck=excluded.ident_duck,
-          ident_ramp_s=excluded.ident_ramp_s
+          overlay_pad_s=excluded.overlay_pad_s,
+          overlay_duck=excluded.overlay_duck,
+          overlay_ramp_s=excluded.overlay_ramp_s
         """,
         (
             cfg.name,
@@ -94,9 +94,9 @@ def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
             int(getattr(cfg, "break_frequency_s", 0) or 0),
             int(getattr(cfg, "break_length_s", 0) or 0),
             int(getattr(cfg, "ident_frequency_s", 0) or 0),
-            float(getattr(cfg, "ident_pad_s", 0.0) or 0.0),
-            float(getattr(cfg, "ident_duck", 0.4) or 0.4),
-            float(getattr(cfg, "ident_ramp_s", 0.5) or 0.5),
+            float(getattr(cfg, "overlay_pad_s", 0.0) or 0.0),
+            float(getattr(cfg, "overlay_duck", 0.4) or 0.4),
+            float(getattr(cfg, "overlay_ramp_s", 0.5) or 0.5),
         ),
     )
     row = one(con, "SELECT id FROM stations WHERE name=?", (cfg.name,))
