@@ -106,7 +106,7 @@ def scan_schedule_overlays(
 ) -> dict[str, int]:
     """
     Scan all overlay directories referenced in the schedule.
-    Returns a dict mapping schedule_key -> count of files scanned.
+    Returns a dict mapping overlays_dir -> count of files scanned.
     """
     results = {}
     seen_dirs: set[str] = set()
@@ -135,7 +135,7 @@ def scan_schedule_overlays(
             n = scan_station_media_dir(
                 con, station_id, entry.overlays_dir, "overlay", verbose=verbose
             )
-            results[schedule_key] = n
+            results[entry.overlays_dir] = n
 
     return results
 
@@ -178,8 +178,8 @@ def main() -> int:
         overlay_counts = scan_schedule_overlays(con, sid, cfg, verbose=args.verbose)
         if overlay_counts:
             print(f"  overlays:")
-            for key, n in overlay_counts.items():
-                print(f"    {key}: {n}")
+            for dir_path, n in overlay_counts.items():
+                print(f"    {dir_path}: {n} files")
 
     con.commit()
     con.close()
