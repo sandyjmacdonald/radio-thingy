@@ -313,6 +313,15 @@ class Scheduler:
 
             helpers.update_station_flags(self.con, sid, pending_break=0)
 
+        # Exclude recently played songs so we don't repeat after an ident plays between songs
+        # (when an ident finishes, station_state.current_media_id is the ident, not the last song)
+        recent_rows = self.con.execute(
+            "SELECT DISTINCT media_id FROM plays WHERE station_id=? AND kind='song'"
+            " ORDER BY started_ts DESC LIMIT 10",
+            (sid,),
+        ).fetchall()
+        recent_song_ids = {int(r[0]) for r in recent_rows}
+
         # Best-fit song (seeded)
         song = self._pick_best_fit_song_station_seeded(
             station_name,
@@ -322,6 +331,7 @@ class Scheduler:
             near_window_s=30.0,
             avoid_other_station_current=True,
             duration_jitter_s=12.0,
+            extra_avoid_ids=recent_song_ids,
         )
         if song:
             mid = int(song["id"])
@@ -532,6 +542,7 @@ class Scheduler:
         near_window_s: float = 30.0,
         avoid_other_station_current: bool = True,
         duration_jitter_s: float = 12.0,
+        extra_avoid_ids: Optional[set[int]] = None,
     ):
         rng = self._rng[station_name]
 
@@ -549,6 +560,8 @@ class Scheduler:
         avoid_ids = set(self._tick_reserved_song_ids)
         if avoid_other_station_current:
             avoid_ids |= self._currently_playing_media_ids()
+        if extra_avoid_ids:
+            avoid_ids |= extra_avoid_ids
 
         placeholders = ",".join(["?"] * len(tags))
         sql = f"""
