@@ -322,13 +322,12 @@ class Scheduler:
         ).fetchall()
         recent_song_ids = {int(r[0]) for r in recent_rows}
 
-        # Best-fit song (seeded)
+        # Best-fit song ordered by last_played_ts (oldest played first) for variety
         song = self._pick_best_fit_song_station_seeded(
             station_name,
+            sid,
             tags=tags,
             max_duration=remaining,
-            pool_limit=600,
-            near_window_s=30.0,
             avoid_other_station_current=True,
             duration_jitter_s=12.0,
             extra_avoid_ids=recent_song_ids,
@@ -535,17 +534,18 @@ class Scheduler:
     def _pick_best_fit_song_station_seeded(
         self,
         station_name: str,
+        sid: int,
         tags: list[str],
         max_duration: float,
         *,
-        pool_limit: int = 600,
-        near_window_s: float = 30.0,
+        pool_limit: int = 20,
         avoid_other_station_current: bool = True,
         duration_jitter_s: float = 12.0,
         extra_avoid_ids: Optional[set[int]] = None,
     ):
         rng = self._rng[station_name]
 
+        remaining = float(max_duration)
         max_duration = float(max_duration)
         if max_duration <= 1.0:
             return None
@@ -563,30 +563,40 @@ class Scheduler:
         if extra_avoid_ids:
             avoid_ids |= extra_avoid_ids
 
-        placeholders = ",".join(["?"] * len(tags))
+        tag_placeholders = ",".join(["?"] * len(tags))
+        avoid_clause = ""
+        avoid_params: list = []
+        if avoid_ids:
+            avoid_placeholders = ",".join(["?"] * len(avoid_ids))
+            avoid_clause = f"AND m.id NOT IN ({avoid_placeholders})"
+            avoid_params = list(avoid_ids)
+
         sql = f"""
-            SELECT id, path, duration_s
-            FROM media
-            WHERE kind='song'
-              AND tag IN ({placeholders})
-              AND duration_s IS NOT NULL
-              AND duration_s <= ?
-            ORDER BY duration_s DESC, id DESC
+            SELECT m.id, m.path, m.duration_s
+            FROM media m
+            JOIN station_media sm ON sm.media_id = m.id AND sm.station_id = ?
+            WHERE m.kind = 'song'
+              AND m.tag IN ({tag_placeholders})
+              AND m.duration_s IS NOT NULL
+              AND m.duration_s > 1
+              AND m.duration_s <= ?
+              {avoid_clause}
+            ORDER BY COALESCE(sm.last_played_ts, 0) ASC, RANDOM()
             LIMIT ?
         """
-        rows = self.con.execute(sql, (*tags, max_duration, int(pool_limit))).fetchall()
+        params = [int(sid), *tags, max_duration, *avoid_params, int(pool_limit)]
+        rows = self.con.execute(sql, params).fetchall()
         if not rows:
             return None
 
-        filtered = [r for r in rows if int(r["id"]) not in avoid_ids]
-        if filtered:
-            rows = filtered
+        # Within 10 minutes of the next slot, prefer songs that fill the
+        # remaining time well (within 60s of the longest in the pool).
+        if remaining <= 600.0:
+            best_dur = float(rows[0]["duration_s"] or 0.0)
+            near = [r for r in rows if (best_dur - float(r["duration_s"] or 0.0)) <= 60.0]
+            return rng.choice(near if len(near) >= 2 else rows)
 
-        best_dur = float(rows[0]["duration_s"] or 0.0)
-        near = [r for r in rows if (best_dur - float(r["duration_s"] or 0.0)) <= float(near_window_s)]
-        pick_from = near if len(near) >= 2 else rows[:20]
-
-        return rng.choice(pick_from)
+        return rng.choice(rows)
 
     # -------------------- Queue Builders --------------------
 

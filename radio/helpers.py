@@ -354,3 +354,8 @@ def insert_play(con: sqlite3.Connection, station_id_: int, media_id: int, kind: 
         """,
         (int(station_id_), int(media_id), kind, float(started_ts)),
     )
+    if kind == "song":
+        con.execute(
+            "UPDATE station_media SET last_played_ts=? WHERE station_id=? AND media_id=?",
+            (float(started_ts), int(station_id_), int(media_id)),
+        )

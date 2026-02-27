@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS stations (
 CREATE TABLE IF NOT EXISTS station_media (
   station_id INTEGER NOT NULL REFERENCES stations(id) ON DELETE CASCADE,
   media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+  last_played_ts REAL DEFAULT 0,
   PRIMARY KEY (station_id, media_id)
 );
 
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS station_overlays (
 CREATE INDEX IF NOT EXISTS idx_media_kind_tag ON media(kind, tag);
 CREATE INDEX IF NOT EXISTS idx_media_song_tag_dur ON media(kind, tag, duration_s);
 CREATE INDEX IF NOT EXISTS idx_plays_station_time ON plays(station_id, started_ts);
+CREATE INDEX IF NOT EXISTS idx_station_media_last_played ON station_media(station_id, last_played_ts);
 """
 
 def _ensure_column(con: sqlite3.Connection, table: str, col: str, decl: str) -> None:
@@ -152,6 +154,7 @@ def connect(db_path: str) -> sqlite3.Connection:
     _ensure_column(con, "station_state", "queue_index", "INTEGER DEFAULT 0")
     _ensure_column(con, "station_state", "last_ident_ts", "REAL DEFAULT 0")
     _ensure_column(con, "station_state", "last_toth_slot_ts", "REAL DEFAULT 0")
+    _ensure_column(con, "station_media", "last_played_ts", "REAL DEFAULT 0")
 
     _migrate_media_kinds(con)
     _migrate_stations_overlay_columns(con)
