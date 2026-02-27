@@ -147,6 +147,13 @@ def connect(db_path: str) -> sqlite3.Connection:
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(db_path, check_same_thread=False)
     con.row_factory = sqlite3.Row
+
+    # Pre-migration: if station_media already exists without last_played_ts, add it
+    # now so that executescript(SCHEMA) can create the index on that column.
+    tables = {r["name"] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "station_media" in tables:
+        _ensure_column(con, "station_media", "last_played_ts", "REAL DEFAULT 0")
+
     con.executescript(SCHEMA)
 
     # Migrations for older DBs that predate the current schema
