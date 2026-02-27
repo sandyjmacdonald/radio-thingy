@@ -356,6 +356,10 @@ def insert_play(con: sqlite3.Connection, station_id_: int, media_id: int, kind: 
     )
     if kind == "song":
         con.execute(
-            "UPDATE station_media SET last_played_ts=? WHERE station_id=? AND media_id=?",
-            (float(started_ts), int(station_id_), int(media_id)),
+            """
+            INSERT INTO station_media(station_id, media_id, last_played_ts)
+            VALUES(?,?,?)
+            ON CONFLICT(station_id, media_id) DO UPDATE SET last_played_ts=excluded.last_played_ts
+            """,
+            (int(station_id_), int(media_id), float(started_ts)),
         )

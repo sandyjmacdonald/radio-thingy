@@ -37,8 +37,12 @@ def iter_mp3(root: Path) -> Iterable[Path]:
             yield p
 
 
-def scan_songs(con, music_root: str, *, verbose: bool) -> int:
-    """Scan the music root for MP3 files and upsert them into the media table as songs."""
+def scan_songs(con, music_root: str, *, station_ids: list = None, verbose: bool) -> int:
+    """Scan the music root for MP3 files and upsert them into the media table as songs.
+
+    If station_ids is provided, each song is also linked to those stations in station_media
+    so they can be selected by the scheduler.
+    """
     root = Path(music_root).expanduser().resolve()
     n = 0
     for p in iter_mp3(root):
@@ -59,6 +63,8 @@ def scan_songs(con, music_root: str, *, verbose: bool) -> int:
                 mtime=mtime,
             ),
         )
+        for sid in (station_ids or []):
+            link_station_media(con, sid, media_id)
         if verbose:
             print(f"[song] {tag:>10}  {p.name}  ({dur:.1f}s)  id={media_id}")
         n += 1
@@ -159,14 +165,20 @@ def main() -> int:
     con = connect(str(Path(args.db).expanduser()))
     print(f"DB: {args.db}")
 
-    print(f"Scanning songs under: {args.music}")
-    n_songs = scan_songs(con, args.music, verbose=args.verbose)
-    print(f"Songs: {n_songs}")
-
+    # Upsert stations first so we can link songs to them
     cfgs = load_station_cfgs(args.stations)
+    station_ids = []
     for cfg in cfgs:
         sid = upsert_station(con, cfg)
         print(f"Station upserted: {cfg.name} @ {cfg.freq:.1f} FM (id={sid})")
+        station_ids.append(sid)
+
+    print(f"Scanning songs under: {args.music}")
+    n_songs = scan_songs(con, args.music, station_ids=station_ids, verbose=args.verbose)
+    print(f"Songs: {n_songs}")
+
+    for cfg, sid in zip(cfgs, station_ids):
+        print(f"Scanning station media: {cfg.name}")
 
         n_idents = scan_station_media_dir(con, sid, cfg.idents_dir, "ident", verbose=args.verbose)
         n_commercials = scan_station_media_dir(con, sid, cfg.commercials_dir, "commercial", verbose=args.verbose)

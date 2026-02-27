@@ -574,7 +574,7 @@ class Scheduler:
         sql = f"""
             SELECT m.id, m.path, m.duration_s
             FROM media m
-            JOIN station_media sm ON sm.media_id = m.id AND sm.station_id = ?
+            LEFT JOIN station_media sm ON sm.media_id = m.id AND sm.station_id = ?
             WHERE m.kind = 'song'
               AND m.tag IN ({tag_placeholders})
               AND m.duration_s IS NOT NULL
