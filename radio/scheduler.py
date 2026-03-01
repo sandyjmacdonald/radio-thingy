@@ -384,8 +384,10 @@ class Scheduler:
             )
 
         # Filler (ident + commercials)
+        last_kind = str(st["kind"] or "") if st else ""
         queue_ids = self._build_ident_plus_commercials_queue(
-            station_name, sid, target_s=remaining, slop_s=self.filler_slop_s
+            station_name, sid, target_s=remaining, slop_s=self.filler_slop_s,
+            skip_leading_ident=last_kind == "ident",
         )
         if not queue_ids:
             helpers.set_noise_state(self.con, sid, now_ts, slot_end_ts)
