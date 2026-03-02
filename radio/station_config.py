@@ -126,11 +126,6 @@ class StationConfig:
     # Ident frequency (how often to play a between-song ident)
     ident_frequency_s: int = 0
 
-    # Overlay config (overlays play over songs)
-    overlay_pad_s: float = 0.0
-    overlay_duck: float = 0.4
-    overlay_ramp_s: float = 0.5
-
     # Top-of-the-hour jingle directory
     top_of_the_hour: str = ""
 
@@ -153,10 +148,6 @@ def load_station_toml(path: str) -> StationConfig:
       break_length_s = 60
 
       ident_frequency_s = 180
-
-      overlay_pad_s = 2.0
-      overlay_duck = 0.4
-      overlay_ramp_s = 0.5
 
       [schedule.monday]
       7 = { tags = "pop", overlays = "KHMR-pop-overlays", overlays_probability = 0.3 }
@@ -194,19 +185,6 @@ def load_station_toml(path: str) -> StationConfig:
 
     ident_frequency_s = _as_int(data.get("ident_frequency_s") or data.get("ident_frequency") or 0, 0)
 
-    # Accept new names; fall back to old ident_ names for backwards compatibility
-    overlay_pad_s = _as_float(
-        data.get("overlay_pad_s") or data.get("overlay_pad")
-        or data.get("ident_pad_s") or data.get("ident_pad") or 0.0, 0.0
-    )
-    overlay_duck = _as_float(
-        data.get("overlay_duck") or data.get("ident_duck") or 0.4, 0.4
-    )
-    overlay_ramp_s = _as_float(
-        data.get("overlay_ramp_s") or data.get("overlay_ramp")
-        or data.get("ident_ramp_s") or data.get("ident_ramp") or 0.5, 0.5
-    )
-
     top_of_the_hour = _as_str(data.get("top_of_the_hour")).strip()
     schedule = _normalize_schedule(data.get("schedule"))
 
@@ -218,9 +196,6 @@ def load_station_toml(path: str) -> StationConfig:
         break_frequency_s=break_frequency_s,
         break_length_s=break_length_s,
         ident_frequency_s=ident_frequency_s,
-        overlay_pad_s=overlay_pad_s,
-        overlay_duck=overlay_duck,
-        overlay_ramp_s=overlay_ramp_s,
         top_of_the_hour=top_of_the_hour,
         schedule=schedule,
     )

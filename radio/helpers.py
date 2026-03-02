@@ -65,26 +65,23 @@ def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
     Insert or update a station row from a config object.
 
     cfg must have attributes: name, freq, idents_dir, commercials_dir,
-    break_frequency_s, break_length_s, ident_frequency_s, overlay_pad_s, overlay_duck, overlay_ramp_s.
+    break_frequency_s, break_length_s, ident_frequency_s.
     """
     con.execute(
         """
         INSERT INTO stations(
           name, freq, idents_dir, commercials_dir,
           break_frequency_s, break_length_s,
-          ident_frequency_s, overlay_pad_s, overlay_duck, overlay_ramp_s
+          ident_frequency_s
         )
-        VALUES(?,?,?,?,?,?,?,?,?,?)
+        VALUES(?,?,?,?,?,?,?)
         ON CONFLICT(name) DO UPDATE SET
           freq=excluded.freq,
           idents_dir=excluded.idents_dir,
           commercials_dir=excluded.commercials_dir,
           break_frequency_s=excluded.break_frequency_s,
           break_length_s=excluded.break_length_s,
-          ident_frequency_s=excluded.ident_frequency_s,
-          overlay_pad_s=excluded.overlay_pad_s,
-          overlay_duck=excluded.overlay_duck,
-          overlay_ramp_s=excluded.overlay_ramp_s
+          ident_frequency_s=excluded.ident_frequency_s
         """,
         (
             cfg.name,
@@ -94,9 +91,6 @@ def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
             int(getattr(cfg, "break_frequency_s", 0) or 0),
             int(getattr(cfg, "break_length_s", 0) or 0),
             int(getattr(cfg, "ident_frequency_s", 0) or 0),
-            float(getattr(cfg, "overlay_pad_s", 0.0) or 0.0),
-            float(getattr(cfg, "overlay_duck", 0.4) or 0.4),
-            float(getattr(cfg, "overlay_ramp_s", 0.5) or 0.5),
         ),
     )
     row = one(con, "SELECT id FROM stations WHERE name=?", (cfg.name,))

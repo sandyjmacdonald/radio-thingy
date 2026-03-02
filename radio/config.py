@@ -22,6 +22,10 @@ class RadioConfig:
     step: float = 0.1
     lock_window: float = 0.2
     fade_window: float = 0.5
+    # Overlay (voice-over) defaults
+    overlay_pad_s: float = 2.0
+    overlay_duck: float = 0.75
+    overlay_ramp_s: float = 0.5
     # Runtime
     tick_s: float = 0.25
     # API
@@ -44,6 +48,9 @@ def load_config(path: str) -> RadioConfig:
         step=float(data.get("step", 0.1)),
         lock_window=float(data.get("lock_window", 0.2)),
         fade_window=float(data.get("fade_window", 0.5)),
+        overlay_pad_s=float(data.get("overlay_pad_s", 2.0)),
+        overlay_duck=float(data.get("overlay_duck", 0.75)),
+        overlay_ramp_s=float(data.get("overlay_ramp_s", 0.5)),
         tick_s=float(data.get("tick_s", 0.25)),
         api_host=data.get("api_host", "0.0.0.0"),
         api_port=int(data.get("api_port", 8000)),

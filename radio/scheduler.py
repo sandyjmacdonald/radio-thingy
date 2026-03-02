@@ -72,11 +72,17 @@ class Scheduler:
         *,
         filler_slop_s: float = 4.0,
         break_slop_s: float = 4.0,
+        overlay_pad_s: float = 2.0,
+        overlay_duck: float = 0.75,
+        overlay_ramp_s: float = 0.5,
     ):
         self.con = con
         self.cfgs = station_cfgs
         self.filler_slop_s = float(filler_slop_s)
         self.break_slop_s = float(break_slop_s)
+        self.overlay_pad_s = float(overlay_pad_s)
+        self.overlay_duck = float(overlay_duck)
+        self.overlay_ramp_s = float(overlay_ramp_s)
 
         for name in station_cfgs.keys():
             helpers.station_id(con, name)
@@ -507,9 +513,9 @@ class Scheduler:
 
         return OverlayIdent(
             path=str(overlay["path"]),
-            at_s=max(0.0, float(cfg.overlay_pad_s or 0.0)),
-            duck=max(0.0, min(1.0, float(cfg.overlay_duck or 0.4))),
-            ramp_s=max(0.0, float(cfg.overlay_ramp_s or 0.5)),
+            at_s=self.overlay_pad_s,
+            duck=self.overlay_duck,
+            ramp_s=self.overlay_ramp_s,
         )
 
     def _should_queue_ident(

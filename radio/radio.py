@@ -93,7 +93,12 @@ class RadioApp:
 
         # DB + scheduler
         self.con = connect(self.config.db_path)
-        self.scheduler = Scheduler(self.con, self.station_cfgs)
+        self.scheduler = Scheduler(
+            self.con, self.station_cfgs,
+            overlay_pad_s=self.config.overlay_pad_s,
+            overlay_duck=self.config.overlay_duck,
+            overlay_ramp_s=self.config.overlay_ramp_s,
+        )
 
         # Player
         pcfg = PlayerConfig(

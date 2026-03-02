@@ -4,7 +4,7 @@ set -euo pipefail
 # ---------------- CONFIG ----------------
 RADIO_USER="${SUDO_USER:-$USER}"
 HOME_DIR="$(getent passwd "$RADIO_USER" | cut -d: -f6)"
-PROJECT_DIR="${HOME_DIR}/radio-code"
+PROJECT_DIR="${HOME_DIR}/radio-thingy"
 VENV_DIR="${PROJECT_DIR}/.venv"
 # ---------------------------------------
 
@@ -73,5 +73,5 @@ echo
 echo "Next steps:"
 echo "  cd ${PROJECT_DIR}"
 echo "  . .venv/bin/activate"
-echo "  python -m radio.scan_media --help"
-echo "  python -m radio.radio"
+echo "  python3 scan_media.py"
+echo "  python3 play_radio.py"

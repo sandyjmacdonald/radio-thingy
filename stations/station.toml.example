@@ -42,22 +42,6 @@ break_length_s = 60
 ident_frequency_s = 180
 
 # ============================================================================
-# OVERLAY CONFIGURATION
-# ============================================================================
-# Overlays are audio clips that play over the top of a song with ducking.
-# They are configured per schedule entry (see schedule section below).
-
-# How many seconds into the song to start the overlay
-overlay_pad_s = 2.0
-
-# Volume reduction factor for music when overlay is playing (0.0-1.0)
-# 0.4 = music plays at 40% volume during overlay
-overlay_duck = 0.4
-
-# How long the volume fade takes (in seconds)
-overlay_ramp_s = 0.5
-
-# ============================================================================
 # TOP-OF-THE-HOUR JINGLES
 # ============================================================================
 
