@@ -39,7 +39,7 @@ def _build_now_playing(
         datetime.datetime.fromtimestamp(float(row["ends_ts"]), tz=datetime.timezone.utc).isoformat()
         if row["ends_ts"] is not None else None
     )
-    duration_s = float(row["duration_s"]) if row["duration_s"] is not None else None
+    duration_s = round(float(row["duration_s"]), 2) if row["duration_s"] is not None else None
     started_ts_raw = float(row["started_ts"]) if row["started_ts"] is not None else None
 
     return {
@@ -49,7 +49,7 @@ def _build_now_playing(
         "started_at": started_at,
         "ends_at": ends_at,
         "duration_s": duration_s,
-        "elapsed_s": round(now - started_ts_raw, 3) if started_ts_raw is not None else None,
+        "elapsed_s": round(now - started_ts_raw, 2) if started_ts_raw is not None else None,
     }
 
 
