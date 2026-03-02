@@ -1,6 +1,7 @@
 # radio/api.py
 from __future__ import annotations
 
+import datetime
 import time
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -30,9 +31,16 @@ def _build_now_playing(
             (int(row["current_media_id"]),),
         )
 
-    started_at = float(row["started_ts"]) if row["started_ts"] is not None else None
-    ends_at = float(row["ends_ts"]) if row["ends_ts"] is not None else None
+    started_at = (
+        datetime.datetime.fromtimestamp(float(row["started_ts"]), tz=datetime.timezone.utc).isoformat()
+        if row["started_ts"] is not None else None
+    )
+    ends_at = (
+        datetime.datetime.fromtimestamp(float(row["ends_ts"]), tz=datetime.timezone.utc).isoformat()
+        if row["ends_ts"] is not None else None
+    )
     duration_s = float(row["duration_s"]) if row["duration_s"] is not None else None
+    started_ts_raw = float(row["started_ts"]) if row["started_ts"] is not None else None
 
     return {
         "type": row["kind"],
@@ -41,7 +49,7 @@ def _build_now_playing(
         "started_at": started_at,
         "ends_at": ends_at,
         "duration_s": duration_s,
-        "elapsed_s": round(now - started_at, 3) if started_at is not None else None,
+        "elapsed_s": round(now - started_ts_raw, 3) if started_ts_raw is not None else None,
     }
 
 
