@@ -1,10 +1,10 @@
-# Radio Thingy 📻
+# deadair 📻
 
 A Python-based FM radio station emulator that brings the nostalgic experience of classic FM radio to your Raspberry Pi. Tune between multiple stations, each with its own frequency, programming schedule, station identifications, overlays, and commercial breaks.
 
 ## Overview
 
-Radio Thingy simulates a complete FM radio ecosystem with multiple stations broadcasting on different frequencies. Each station can have its own 24/7 programming schedule, mixing music with authentic radio station elements like idents (station identifications), overlays (promos and announcements played over songs), and commercial breaks.
+deadair simulates a complete FM radio ecosystem with multiple stations broadcasting on different frequencies. Each station can have its own 24/7 programming schedule, mixing music with authentic radio station elements like idents (station identifications), overlays (promos and announcements played over songs), and commercial breaks.
 
 Experience the joy of tuning through static between stations, catching your favourite music, and hearing those classic radio elements that made FM radio so engaging.
 
@@ -81,8 +81,8 @@ A single MP3 (chosen at random from a directory) plays as the very first item wh
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url> radio-thingy
-cd radio-thingy
+git clone <your-repo-url> deadair
+cd deadair
 ```
 
 ### 2. Run the Installation Script
@@ -455,7 +455,7 @@ The system uses SQLite to track:
 ### Project Structure
 
 ```
-radio-thingy/
+deadair/
 ├── radio/                  # Main package
 │   ├── __init__.py
 │   ├── config.py          # RadioConfig dataclass + load_config()
