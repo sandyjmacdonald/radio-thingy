@@ -1,4 +1,4 @@
-# deadair 📻
+# 💀 deadair 💀
 
 A Python-based FM radio station emulator that brings the nostalgic experience of classic FM radio to your Raspberry Pi. Tune between multiple stations, each with its own frequency, programming schedule, station identifications, overlays, and commercial breaks.
 
