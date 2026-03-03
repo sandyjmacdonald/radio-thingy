@@ -32,11 +32,11 @@ def _build_now_playing(
         )
 
     started_at = (
-        datetime.datetime.fromtimestamp(float(row["started_ts"]), tz=datetime.timezone.utc).isoformat()
+        datetime.datetime.fromtimestamp(float(row["started_ts"]), tz=datetime.timezone.utc).isoformat(timespec="milliseconds")
         if row["started_ts"] is not None else None
     )
     ends_at = (
-        datetime.datetime.fromtimestamp(float(row["ends_ts"]), tz=datetime.timezone.utc).isoformat()
+        datetime.datetime.fromtimestamp(float(row["ends_ts"]), tz=datetime.timezone.utc).isoformat(timespec="milliseconds")
         if row["ends_ts"] is not None else None
     )
     duration_s = round(float(row["duration_s"]), 2) if row["duration_s"] is not None else None
