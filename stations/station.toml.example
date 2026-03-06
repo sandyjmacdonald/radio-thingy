@@ -299,5 +299,4 @@ ident_frequency_s = 180
 #   - 1.0 = Always overlay every song
 #
 # After creating your station config, scan it with:
-#   python -m radio.scan_media --db /path/to/radio.db \
-#     --music /path/to/music --stations stations/MYCALL.toml
+#   python rescan.py
