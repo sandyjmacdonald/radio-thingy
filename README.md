@@ -84,6 +84,12 @@ This will:
 source .venv/bin/activate
 ```
 
+## Making / Finding Station Idents, etc.
+
+For me, a lot of the fun with this project has been making up fictitious ads, station idents, little bits of DJ chatter, and so on. I've used ElevenLabs Text to Speech, Sound Effects, and Music to do this, but you may want to use another tool to do that, or even be your own DJ and use your own voice (I have a very boring Scottish voice).
+
+You might also want to pull out bits from real vintage radio broadcasts, from somewhere like the Internet Archive, although be aware of any restrictions around copyright and IP that may apply.
+
 ## Configuration
 
 ### Runtime Configuration (`config.toml`)
