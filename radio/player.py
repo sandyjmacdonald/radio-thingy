@@ -105,6 +105,11 @@ class Player:
 
     # -------------------- Mix Control --------------------
 
+    def set_master_vol(self, vol_0_100: int) -> None:
+        """Update the master volume level and re-apply all channel volumes."""
+        self.cfg.master_vol = clampi(vol_0_100)
+        self._apply_volumes()
+
     def set_mix(self, base_music_vol_0_100: int) -> None:
         """Crossfade between noise and music based on tuning position."""
         self._base_music_vol = clampi(base_music_vol_0_100)

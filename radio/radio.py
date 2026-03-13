@@ -12,7 +12,7 @@ import uvicorn
 
 from .config import RadioConfig
 from .db import connect
-from .input import TuneInput
+from .input import TuneInput, VolumeInput
 from .station_config import load_station_toml, StationConfig
 from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
@@ -81,6 +81,7 @@ class RadioApp:
         self,
         config: RadioConfig,
         inputs: list[TuneInput] | None = None,
+        volume_inputs: list[VolumeInput] | None = None,
         verbosity: str = "normal",
     ):
         self.config = config
@@ -123,6 +124,10 @@ class RadioApp:
         self._inputs = inputs or []
         for inp in self._inputs:
             inp.start(self.tune)
+
+        self._volume_inputs = volume_inputs or []
+        for inp in self._volume_inputs:
+            inp.start(self.set_volume)
 
         # lock for tune() calls (gpio callbacks are threaded)
         self._lock = threading.Lock()
@@ -187,6 +192,10 @@ class RadioApp:
 
         # Always call play(); Player should be idempotent and handle seeks/overlays correctly.
         self.player.play(np)
+
+    def set_volume(self, level: int) -> None:
+        """Set the master volume (0–100) from a physical volume input."""
+        self.player.set_master_vol(level)
 
     def tune(self, delta: float) -> None:
         """Adjust the dial by delta MHz, updating station selection and audio mix accordingly."""
@@ -272,6 +281,11 @@ class RadioApp:
             pass
         finally:
             for inp in self._inputs:
+                try:
+                    inp.stop()
+                except Exception:
+                    pass
+            for inp in self._volume_inputs:
                 try:
                     inp.stop()
                 except Exception:

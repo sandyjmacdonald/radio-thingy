@@ -110,3 +110,62 @@ class RgbEncoderInput(TuneInput):
             self._thread.join(timeout=2.0)
             self._thread = None
         self._ioe = None
+
+
+class VolumeInput:
+    """Base class for physical (or virtual) volume input devices."""
+
+    def start(self, set_volume: Callable[[int], None]) -> None:
+        """Register the set_volume callback and begin listening for input events."""
+
+    def stop(self) -> None:
+        """Stop listening and release hardware resources."""
+
+
+class PotentiometerInput(VolumeInput):
+    """Pimoroni Potentiometer Breakout connected via I2C (addr 0x0E).
+
+    Reads the potentiometer position and calls set_volume(0–100).
+    Polled at poll_hz.
+    """
+
+    _POT_PIN = 1
+
+    def __init__(
+        self,
+        i2c_addr: int = 0x0E,
+        poll_hz: float = 10.0,
+    ):
+        self.i2c_addr = i2c_addr
+        self._poll_interval = 1.0 / poll_hz
+        self._set_volume: Optional[Callable[[int], None]] = None
+        self._ioe: Optional[object] = None
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+
+    def start(self, set_volume: Callable[[int], None]) -> None:
+        import ioexpander as io  # lazy — no crash on non-Pi
+
+        self._set_volume = set_volume
+        self._ioe = io.IOE(i2c_addr=self.i2c_addr)
+        self._ioe.set_mode(self._POT_PIN, io.PIN_MODE_ADC)
+
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+
+    def _loop(self) -> None:
+        ioe = self._ioe
+        while self._running:
+            raw = ioe.input(self._POT_PIN)
+            vref = ioe.get_adc_vref()
+            volume = int((raw / vref) * 100)
+            self._set_volume(volume)
+            time.sleep(self._poll_interval)
+
+    def stop(self) -> None:
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2.0)
+            self._thread = None
+        self._ioe = None
