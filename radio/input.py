@@ -169,7 +169,7 @@ class PotentiometerInput(VolumeInput):
         ioe = self._ioe
         while self._running:
             analog = ioe.input(self._ENC_C)
-            volume = int((analog / 3.3) * 100)
+            volume = 100 - int((analog / 3.3) * 100)
             self._set_volume(volume)
             time.sleep(self._poll_interval)
 
