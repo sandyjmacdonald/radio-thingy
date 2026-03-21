@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime
 import glob
+import math
 import time
 import threading
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ import uvicorn
 
 from .config import RadioConfig
 from .db import connect
-from .input import TuneInput, VolumeInput
+from .input import TuneInput, VolumeInput, TuningLED
 from .station_config import load_station_toml, StationConfig
 from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
@@ -22,8 +23,9 @@ from . import terminal as T
 
 # -------------------- Helpers --------------------
 
-def clamp_freq(v: float, freq_min: float, freq_max: float) -> float:
-    return round(max(freq_min, min(freq_max, v)), 1)
+def clamp_freq(v: float, freq_min: float, freq_max: float, step: float = 0.1) -> float:
+    decimals = max(1, -int(math.floor(math.log10(step)))) if step > 0 else 1
+    return round(max(freq_min, min(freq_max, v)), decimals)
 
 
 def gain_from_delta(delta: float, lock_window: float, fade_window: float) -> float:
@@ -82,6 +84,7 @@ class RadioApp:
         config: RadioConfig,
         inputs: list[TuneInput] | None = None,
         volume_inputs: list[VolumeInput] | None = None,
+        tuning_led: TuningLED | None = None,
         verbosity: str = "normal",
     ):
         self.config = config
@@ -128,6 +131,10 @@ class RadioApp:
         self._volume_inputs = volume_inputs or []
         for inp in self._volume_inputs:
             inp.start(self.set_volume)
+
+        self._tuning_led = tuning_led
+        if self._tuning_led:
+            self._tuning_led.start()
 
         # lock for tune() calls (gpio callbacks are threaded)
         self._lock = threading.Lock()
@@ -201,7 +208,7 @@ class RadioApp:
         """Adjust the dial by delta MHz, updating station selection and audio mix accordingly."""
         with self._lock:
             self.state.freq = clamp_freq(
-                self.state.freq + delta, self.config.freq_min, self.config.freq_max
+                self.state.freq + delta, self.config.freq_min, self.config.freq_max, self.config.step
             )
             name, sf = nearest_station(self.state.freq, self.sts, self.mids)
 
@@ -211,6 +218,9 @@ class RadioApp:
 
             # crossfade mix immediately for responsiveness
             self.player.set_mix(self.state.base_music_vol)
+
+            if self._tuning_led:
+                self._tuning_led.set_brightness(g)
 
             if self._verbosity == "verbose":
                 self._log(
@@ -294,6 +304,11 @@ class RadioApp:
                 self.player.stop()
             except Exception:
                 pass
+            if self._tuning_led:
+                try:
+                    self._tuning_led.stop()
+                except Exception:
+                    pass
             try:
                 self.con.close()
             except Exception:

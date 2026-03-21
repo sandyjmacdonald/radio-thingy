@@ -112,6 +112,35 @@ class RgbEncoderInput(TuneInput):
         self._ioe = None
 
 
+class TuningLED:
+    """LED on a GPIO pin that indicates tuning proximity.
+
+    Fades from off at the edge of the tuning window up to full brightness
+    when fully locked to a station (gain == 1.0).
+    """
+
+    def __init__(self, pin: int, max_brightness: float = 1.0):
+        self.pin = pin
+        self._max_brightness = max(0.0, min(1.0, max_brightness))
+        self._led: Optional[object] = None
+
+    def start(self) -> None:
+        from gpiozero import PWMLED  # lazy — no crash on non-Pi
+        self._led = PWMLED(self.pin)
+
+    def set_brightness(self, value: float) -> None:
+        """Set LED brightness proportional to tuning gain (0.0–1.0)."""
+        if self._led is None:
+            return
+        self._led.value = max(0.0, min(1.0, value)) * self._max_brightness
+
+    def stop(self) -> None:
+        if self._led:
+            self._led.off()
+            self._led.close()
+            self._led = None
+
+
 class VolumeInput:
     """Base class for physical (or virtual) volume input devices."""
 
@@ -167,9 +196,10 @@ class PotentiometerInput(VolumeInput):
 
     def _loop(self) -> None:
         ioe = self._ioe
+        vref = ioe.get_adc_vref()
         while self._running:
             analog = ioe.input(self._ENC_C)
-            volume = 100 - int((analog / 3.3) * 100)
+            volume = 100 - int((analog / vref) * 100)
             self._set_volume(volume)
             time.sleep(self._poll_interval)
 

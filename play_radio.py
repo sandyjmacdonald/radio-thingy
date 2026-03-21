@@ -3,7 +3,7 @@
 import argparse
 
 from radio.config import load_config
-from radio.input import RgbEncoderInput, PotentiometerInput
+from radio.input import RgbEncoderInput, PotentiometerInput, TuningLED
 from radio.radio import RadioApp
 
 DEFAULT_CONFIG = "/home/radio/deadair/config.toml"
@@ -33,10 +33,12 @@ def main() -> None:
 
     cfg = load_config(args.config)
     volume_inputs = [PotentiometerInput()] if args.potentiometer else []
+    tuning_led = TuningLED(cfg.tuning_led_pin, max_brightness=cfg.led_brightness) if cfg.tuning_led_pin is not None else None
     app = RadioApp(
         config=cfg,
         inputs=[RgbEncoderInput(cfg.step, interrupt_pin=args.interrupt_pin)],
         volume_inputs=volume_inputs,
+        tuning_led=tuning_led,
         verbosity=verbosity,
     )
     app.run()
