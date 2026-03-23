@@ -45,12 +45,6 @@ overlay_ramp_s = 0.5   # duck fade in/out duration (seconds)
 # potentiometer         = false  # set to true to enable potentiometer volume control
 # potentiometer_i2c_bus = 0      # I2C bus (0 = pins 27/28, 1 = pins 3/5)
 
-# Tuning glitch effect — randomly injects noise bursts over the station audio
-# glitch_probability: expected glitches per minute (0 = disabled)
-# glitch_duration_s:  maximum length of each glitch burst in seconds
-# glitch_probability = 2.0
-# glitch_duration_s  = 0.75
-
 # Main loop
 tick_s = 0.25
 

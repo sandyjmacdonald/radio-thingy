@@ -34,9 +34,6 @@ class RadioConfig:
     encoder_i2c_bus: int = 1
     potentiometer: bool = False
     potentiometer_i2c_bus: int = 0
-    # Glitch effect
-    glitch_probability: float = 0.0   # expected glitches per minute (0 = disabled)
-    glitch_duration_s: float = 0.75   # maximum glitch duration in seconds
     # Runtime
     tick_s: float = 0.25
     # API
@@ -69,8 +66,6 @@ def load_config(path: str) -> RadioConfig:
         encoder_i2c_bus=int(data.get("encoder_i2c_bus", 1)),
         potentiometer=bool(data.get("potentiometer", False)),
         potentiometer_i2c_bus=int(data.get("potentiometer_i2c_bus", 0)),
-        glitch_probability=float(data.get("glitch_probability", 0.0)),
-        glitch_duration_s=float(data.get("glitch_duration_s", 0.75)),
         tick_s=float(data.get("tick_s", 0.25)),
         api_host=data.get("api_host", "0.0.0.0"),
         api_port=int(data.get("api_port", 8000)),

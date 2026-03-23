@@ -64,10 +64,6 @@ class Player:
         self._duck_ramp_s = 0.5
         self._duck_target_factor = 1.0
 
-        # glitch: temporarily lets noise through over music
-        self._glitch_factor = 1.0
-        self._glitch_timer: Optional[threading.Timer] = None
-
         # ramp token to cancel old ramps
         self._ramp_lock = threading.Lock()
         self._ramp_token = 0
@@ -128,15 +124,12 @@ class Player:
         master = clampi(self.cfg.master_vol)
         base = clampi(self._base_music_vol)
 
-        # Glitch reduces effective base, letting noise bleed through
-        eff_base = int(base * self._glitch_factor)
-
         # Noise opposite
-        noise_vol = clampi(100 - eff_base)
+        noise_vol = clampi(100 - base)
         self.noise.volume = scale(noise_vol, master)
 
-        # Music is eff_base * duck_factor
-        eff = int(eff_base * self._duck_factor)
+        # Music is base * duck_factor
+        eff = int(base * self._duck_factor)
         self.music.volume = scale(clampi(eff), master)
 
         # ident always obey master (volume fixed at 100% * master)
@@ -215,47 +208,6 @@ class Player:
 
         # volumes may have changed
         self._apply_volumes()
-
-    def trigger_glitch(self, duration_s: float, ramp_s: float = 0.05) -> None:
-        """Briefly let noise bleed through over the music, then restore."""
-        # Cancel any in-progress glitch
-        if self._glitch_timer is not None:
-            try:
-                self._glitch_timer.cancel()
-            except Exception:
-                pass
-            self._glitch_timer = None
-
-        def _restore():
-            self._glitch_timer = None
-            self._ramp_glitch(target=1.0, ramp_s=ramp_s)
-
-        self._ramp_glitch(target=0.0, ramp_s=ramp_s)
-        self._glitch_timer = threading.Timer(duration_s + ramp_s, _restore)
-        self._glitch_timer.daemon = True
-        self._glitch_timer.start()
-
-    def _ramp_glitch(self, target: float, ramp_s: float) -> None:
-        """Smoothly ramp _glitch_factor to target."""
-        target = max(0.0, min(1.0, target))
-        if ramp_s <= 0.01 or abs(target - self._glitch_factor) < 0.001:
-            self._glitch_factor = target
-            self._apply_volumes()
-            return
-
-        start = float(self._glitch_factor)
-        steps = max(3, int(ramp_s / 0.02))
-        dt = ramp_s / steps
-
-        def run():
-            for i in range(1, steps + 1):
-                self._glitch_factor = start + (target - start) * (i / steps)
-                self._apply_volumes()
-                time.sleep(dt)
-            self._glitch_factor = target
-            self._apply_volumes()
-
-        threading.Thread(target=run, daemon=True).start()
 
     def _seek_when_ready(self, target_s: float, timeout_s: float = 2.0) -> None:
         """Seek to target_s, retrying briefly since MPV may reject seeks immediately after loadfile."""

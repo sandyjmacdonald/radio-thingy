@@ -4,7 +4,6 @@ from __future__ import annotations
 import datetime
 import glob
 import math
-import random
 import time
 import threading
 from dataclasses import dataclass
@@ -333,13 +332,6 @@ class RadioApp:
                     # active=True ONLY for the audible/closest station
                     np = self.scheduler.ensure_station_current(st, now, active=True)
                     self._maybe_log_and_play(np)
-
-                    # Random tuning glitches
-                    if self.config.glitch_probability > 0:
-                        p = self.config.glitch_probability * self.config.tick_s / 60.0
-                        if random.random() < p:
-                            dur = random.uniform(0.1, self.config.glitch_duration_s)
-                            self.player.trigger_glitch(dur)
 
                 time.sleep(self.config.tick_s)
 
