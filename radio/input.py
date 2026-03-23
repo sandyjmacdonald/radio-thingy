@@ -78,11 +78,13 @@ class RgbEncoderInput(TuneInput):
         self,
         step: float,
         i2c_addr: int = 0x0F,
+        i2c_bus: int = 1,
         interrupt_pin: Optional[int] = None,
         poll_hz: float = 30.0,
     ):
         self.step = step
         self.i2c_addr = i2c_addr
+        self.i2c_bus = i2c_bus
         self.interrupt_pin = interrupt_pin
         self._poll_interval = 1.0 / poll_hz
         self._tune: Optional[Callable[[float], None]] = None
@@ -97,10 +99,10 @@ class RgbEncoderInput(TuneInput):
         self._tune = tune
 
         if self.interrupt_pin is not None:
-            self._ioe = io.IOE(i2c_addr=self.i2c_addr, interrupt_pin=self.interrupt_pin)
+            self._ioe = io.IOE(i2c_addr=self.i2c_addr, smbus_id=self.i2c_bus, interrupt_pin=self.interrupt_pin)
             self._ioe.enable_interrupt_out(pin_swap=True)
         else:
-            self._ioe = io.IOE(i2c_addr=self.i2c_addr)
+            self._ioe = io.IOE(i2c_addr=self.i2c_addr, smbus_id=self.i2c_bus)
 
         self._ioe.setup_rotary_encoder(1, self._ENC_A, self._ENC_B, pin_c=self._ENC_C)
         self._last_count = self._ioe.read_rotary_encoder(1)

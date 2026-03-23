@@ -30,6 +30,10 @@ class RadioConfig:
     tuning_led_pin: Optional[int] = None
     led_brightness: float = 0.5
     buttons: list[tuple[int, str]] = field(default_factory=list)
+    encoder_interrupt_pin: Optional[int] = None
+    encoder_i2c_bus: int = 1
+    potentiometer: bool = False
+    potentiometer_i2c_bus: int = 0
     # Runtime
     tick_s: float = 0.25
     # API
@@ -58,6 +62,10 @@ def load_config(path: str) -> RadioConfig:
         tuning_led_pin=int(data["tuning_led_pin"]) if "tuning_led_pin" in data else None,
         led_brightness=float(data.get("led_brightness", 0.5)),
         buttons=[(int(b["pin"]), b["action"]) for b in data.get("buttons", [])],
+        encoder_interrupt_pin=int(data["encoder_interrupt_pin"]) if "encoder_interrupt_pin" in data else None,
+        encoder_i2c_bus=int(data.get("encoder_i2c_bus", 1)),
+        potentiometer=bool(data.get("potentiometer", False)),
+        potentiometer_i2c_bus=int(data.get("potentiometer_i2c_bus", 0)),
         tick_s=float(data.get("tick_s", 0.25)),
         api_host=data.get("api_host", "0.0.0.0"),
         api_port=int(data.get("api_port", 8000)),

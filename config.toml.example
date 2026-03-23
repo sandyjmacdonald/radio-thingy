@@ -37,6 +37,14 @@ overlay_ramp_s = 0.5   # duck fade in/out duration (seconds)
 #     { pin = 24, action = "toggle_mute" },          # mute / unmute
 # ]
 
+# Hardware — rotary encoder (RGB Encoder Breakout, I2C addr 0x0F)
+# encoder_i2c_bus       = 1   # I2C bus (1 = pins 3/5, 0 = pins 27/28)
+# encoder_interrupt_pin = 4   # BCM GPIO pin wired to INT header (omit to poll instead)
+
+# Hardware — potentiometer (Potentiometer Breakout, I2C addr 0x0E)
+# potentiometer         = false  # set to true to enable potentiometer volume control
+# potentiometer_i2c_bus = 0      # I2C bus (0 = pins 27/28, 1 = pins 3/5)
+
 # Main loop
 tick_s = 0.25
 

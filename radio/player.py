@@ -81,8 +81,7 @@ class Player:
         # Noise player (always looping)
         self.noise = mpv.MPV(**common_opts)
         self.noise.loop_file = "inf"
-        self.noise.volume = scale(100, self.cfg.master_vol)
-        self.noise.play(self.noise_path)
+        self.noise.volume = 0
 
         # Music player
         music_opts = dict(common_opts)
@@ -102,6 +101,12 @@ class Player:
         def _on_ident_end(_evt):
             # un-duck smoothly
             self._start_duck_ramp(target_factor=1.0)
+
+        # Start noise only after all three MPV instances are created.
+        # Each new MPV client connecting to PipeWire can cause a brief audio
+        # glitch on already-playing streams, so we defer playback until all
+        # instances exist.
+        self.noise.play(self.noise_path)
 
     # -------------------- Mix Control --------------------
 
