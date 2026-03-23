@@ -29,6 +29,13 @@ overlay_ramp_s = 0.5   # duck fade in/out duration (seconds)
 # tuning_led_pin = 17     # BCM GPIO pin
 # led_brightness = 0.5    # maximum PWM brightness (0.0–1.0)
 
+# Hardware — buttons (optional)
+# Keys are BCM GPIO pin numbers; values are RadioApp method names to call on press.
+# Available actions: tune_next_station, toggle_mute
+# [buttons]
+# 23 = "tune_next_station"   # cycle to the next station
+# 24 = "toggle_mute"         # mute / unmute
+
 # Main loop
 tick_s = 0.25
 

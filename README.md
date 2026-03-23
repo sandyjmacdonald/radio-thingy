@@ -42,6 +42,12 @@ deadair is a Python-based FM radio station emulator that brings the nostalgic ex
 - MPV-based playback for reliable audio
 - Support for external DACs and amplifiers
 
+### 🔘 GPIO Button Inputs
+- Optional push-buttons on any GPIO pins for station cycling and mute control
+- **Station cycle**: steps through all configured stations in frequency order, wrapping back to the first after the last
+- **Mute/unmute**: sets volume to 0; on unmute restores the current potentiometer position (if one is configured) or the last known volume
+- Configured in `config.toml` via a `[buttons]` table — keys are BCM GPIO pin numbers, values are the RadioApp method to call on press
+
 ### 💡 Tuning LED
 - Optional PWM LED on any GPIO pin that gives physical feedback as you tune
 - Fades from off at the edge of the tuning window up to full brightness when locked to a station
@@ -123,6 +129,7 @@ The first three keys are **required**; everything else has a sensible default:
 | `fade_window` | | `0.5` | MHz fade zone outside `lock_window` |
 | `tuning_led_pin` | | `null` | BCM GPIO pin number for the tuning LED (omit to disable) |
 | `led_brightness` | | `0.5` | Maximum PWM brightness for the tuning LED, 0.0–1.0 |
+| `[buttons]` | | `{}` | Table mapping BCM GPIO pin numbers to button actions (see below) |
 | `tick_s` | | `0.25` | Main loop tick interval in seconds |
 | `api_host` | | `"0.0.0.0"` | HTTP API bind address |
 | `api_port` | | `8000` | HTTP API port |
@@ -287,6 +294,25 @@ app.run()
 ```
 
 The LED uses `gpiozero.PWMLED` under the hood, so any `gpiozero`-supported pin will work.
+
+### GPIO Buttons
+
+Add a `[buttons]` table to `config.toml`. Keys are BCM GPIO pin numbers; values are the `RadioApp` method to call when the button is pressed:
+
+```toml
+[buttons]
+23 = "tune_next_station"   # cycle to the next station
+24 = "toggle_mute"         # mute / unmute
+```
+
+Available actions:
+
+| Action | Description |
+|---|---|
+| `tune_next_station` | Steps to the next station in frequency order, wrapping back to the first after the last |
+| `toggle_mute` | Sets volume to 0; on unmute restores the current potentiometer position (if active) or the last known volume |
+
+`RadioApp` picks this up automatically from config — no code changes needed. Buttons use `gpiozero.Button` with internal pull-up resistors.
 
 ## Web API
 

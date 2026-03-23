@@ -13,7 +13,7 @@ import uvicorn
 
 from .config import RadioConfig
 from .db import connect
-from .input import TuneInput, VolumeInput, TuningLED
+from .input import TuneInput, VolumeInput, TuningLED, ButtonInput
 from .station_config import load_station_toml, StationConfig
 from .scheduler import Scheduler, NowPlaying
 from .player import Player, PlayerConfig
@@ -139,6 +139,21 @@ class RadioApp:
         # lock for tune() calls (gpio callbacks are threaded)
         self._lock = threading.Lock()
 
+        # mute state
+        self._muted = False
+        self._last_vol: int = self.config.master_vol
+
+        # buttons from config — values are RadioApp method names
+        self._button_inputs: list[ButtonInput] = []
+        for pin, action in self.config.buttons.items():
+            fn = getattr(self, action, None)
+            if fn is None or not callable(fn):
+                print(f"Warning: no callable method '{action}' on RadioApp for GPIO {pin}, skipping")
+                continue
+            btn = ButtonInput(pin, on_press=fn)
+            btn.start()
+            self._button_inputs.append(btn)
+
         # minimal logging state: only print on program change / ident overlay trigger
         self._last_program_sig: Optional[tuple] = None
         self._last_ident_sig: Optional[tuple] = None
@@ -202,7 +217,42 @@ class RadioApp:
 
     def set_volume(self, level: int) -> None:
         """Set the master volume (0–100) from a physical volume input."""
-        self.player.set_master_vol(level)
+        self._last_vol = level
+        if not self._muted:
+            self.player.set_master_vol(level)
+
+    def tune_next_station(self) -> None:
+        """Cycle to the next station by frequency, wrapping back to the first."""
+        with self._lock:
+            names = [name for name, _ in self.sts]
+            current = self.state.station_name
+            idx = (names.index(current) + 1) % len(names) if current in names else 0
+            next_name, next_freq = self.sts[idx]
+
+            self.state.freq = next_freq
+            self.state.station_name = next_name
+            self.state.station_freq = next_freq
+            self.state.base_music_vol = 100
+            self.player.set_mix(100)
+            if self._tuning_led:
+                self._tuning_led.set_brightness(1.0)
+
+            np = self.scheduler.ensure_station_current(next_name, time.time(), active=True)
+            self._log(
+                f"{T.CYAN}Station \u2192 {T.BOLD}{T.BRIGHT_CYAN}{next_name}{T.RESET}"
+                f"{T.CYAN} @ {T.MAGENTA}{next_freq:.1f}{T.CYAN} FM{T.RESET}"
+            )
+            self._maybe_log_and_play(np)
+
+    def toggle_mute(self) -> None:
+        """Toggle mute. Restores to the current potentiometer position or last known volume."""
+        if self._muted:
+            self._muted = False
+            self.player.set_master_vol(self._last_vol)
+        else:
+            self._last_vol = self.player.cfg.master_vol
+            self._muted = True
+            self.player.set_master_vol(0)
 
     def tune(self, delta: float) -> None:
         """Adjust the dial by delta MHz, updating station selection and audio mix accordingly."""
@@ -298,6 +348,11 @@ class RadioApp:
             for inp in self._volume_inputs:
                 try:
                     inp.stop()
+                except Exception:
+                    pass
+            for btn in self._button_inputs:
+                try:
+                    btn.stop()
                 except Exception:
                     pass
             try:

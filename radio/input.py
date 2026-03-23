@@ -5,6 +5,26 @@ import time
 from typing import Callable, Optional
 
 
+class ButtonInput:
+    """A single push-button wired to a GPIO pin that fires a callback when pressed."""
+
+    def __init__(self, pin: int, on_press: Callable[[], None], bounce_time: float = 0.05):
+        self.pin = pin
+        self._on_press = on_press
+        self.bounce_time = bounce_time
+        self._btn: Optional[object] = None
+
+    def start(self) -> None:
+        from gpiozero import Button  # lazy import — no crash on non-Pi
+        self._btn = Button(self.pin, pull_up=True, bounce_time=self.bounce_time)
+        self._btn.when_pressed = self._on_press
+
+    def stop(self) -> None:
+        if self._btn:
+            self._btn.close()
+            self._btn = None
+
+
 class TuneInput:
     """Base class for physical (or virtual) tuning input devices."""
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -29,6 +29,7 @@ class RadioConfig:
     # Hardware
     tuning_led_pin: Optional[int] = None
     led_brightness: float = 0.5
+    buttons: dict[int, str] = field(default_factory=dict)
     # Runtime
     tick_s: float = 0.25
     # API
@@ -56,6 +57,7 @@ def load_config(path: str) -> RadioConfig:
         overlay_ramp_s=float(data.get("overlay_ramp_s", 0.5)),
         tuning_led_pin=int(data["tuning_led_pin"]) if "tuning_led_pin" in data else None,
         led_brightness=float(data.get("led_brightness", 0.5)),
+        buttons={int(pin): action for pin, action in data.get("buttons", {}).items()},
         tick_s=float(data.get("tick_s", 0.25)),
         api_host=data.get("api_host", "0.0.0.0"),
         api_port=int(data.get("api_port", 8000)),
