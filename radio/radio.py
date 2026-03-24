@@ -103,10 +103,11 @@ class RadioApp:
         self.sts = sorted_stations(self.station_cfgs)
         self.mids = midpoints(self.sts)
 
-        # DB + scheduler
+        # DB + scheduler (stream stations have no local files or DB state)
         self.con = connect(self.config.db_path)
+        _regular_cfgs = {n: c for n, c in self.station_cfgs.items() if c.station_type != "stream"}
         self.scheduler = Scheduler(
-            self.con, self.station_cfgs,
+            self.con, _regular_cfgs,
             overlay_pad_s=self.config.overlay_pad_s,
             overlay_duck=self.config.overlay_duck,
             overlay_ramp_s=self.config.overlay_ramp_s,
@@ -155,6 +156,20 @@ class RadioApp:
         # minimal logging state: only print on program change / ident overlay trigger
         self._last_program_sig: Optional[tuple] = None
         self._last_ident_sig: Optional[tuple] = None
+
+    def _stream_now_playing(self, name: str, cfg: StationConfig) -> NowPlaying:
+        """Return a NowPlaying for a live internet stream station."""
+        return NowPlaying(
+            station=name,
+            kind="stream",
+            path=cfg.stream_url,
+            media_id=None,
+            started_ts=0.0,
+            ends_ts=1e18,
+            seek_s=0.0,
+            slot_end_ts=1e18,
+            ident_overlay=None,
+        )
 
     def _log(self, *args, **kwargs) -> None:
         """Print unless in quiet mode."""
@@ -235,7 +250,11 @@ class RadioApp:
             if self._tuning_led:
                 self._tuning_led.set_brightness(1.0)
 
-            np = self.scheduler.ensure_station_current(next_name, time.time(), active=True)
+            next_cfg = self.station_cfgs[next_name]
+            if next_cfg.station_type == "stream":
+                np = self._stream_now_playing(next_name, next_cfg)
+            else:
+                np = self.scheduler.ensure_station_current(next_name, time.time(), active=True)
             self._log(
                 f"{T.CYAN}Station \u2192 {T.BOLD}{T.BRIGHT_CYAN}{next_name}{T.RESET}"
                 f"{T.CYAN} @ {T.MAGENTA}{next_freq:.1f}{T.CYAN} FM{T.RESET}"
@@ -285,7 +304,11 @@ class RadioApp:
 
                 # Only mark station as active if it's actually audible
                 active = self.state.base_music_vol > 0
-                np = self.scheduler.ensure_station_current(name, time.time(), active=active)
+                tuned_cfg = self.station_cfgs[name]
+                if tuned_cfg.station_type == "stream":
+                    np = self._stream_now_playing(name, tuned_cfg)
+                else:
+                    np = self.scheduler.ensure_station_current(name, time.time(), active=active)
 
                 self._log(
                     f"{T.CYAN}Station \u2192 {T.BOLD}{T.BRIGHT_CYAN}{name}{T.RESET}"
@@ -330,7 +353,11 @@ class RadioApp:
 
                 if st and base > 0:
                     # active=True ONLY for the audible/closest station
-                    np = self.scheduler.ensure_station_current(st, now, active=True)
+                    st_cfg = self.station_cfgs[st]
+                    if st_cfg.station_type == "stream":
+                        np = self._stream_now_playing(st, st_cfg)
+                    else:
+                        np = self.scheduler.ensure_station_current(st, now, active=True)
                     self._maybe_log_and_play(np)
 
                 time.sleep(self.config.tick_s)

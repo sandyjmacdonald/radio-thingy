@@ -69,14 +69,19 @@ def create_api(app: RadioApp) -> FastAPI:
             if station not in app.station_cfgs:
                 raise HTTPException(status_code=404, detail=f"Station not found: {station}")
 
-            target_freq = float(app.station_cfgs[station].freq)
+            station_cfg = app.station_cfgs[station]
+            target_freq = float(station_cfg.freq)
             tuned = current_station == station and base_music_vol > 0
 
             base: dict[str, Any] = {
                 "frequency": target_freq,
                 "station": station,
+                "station_type": station_cfg.station_type,
                 "tuned": tuned,
             }
+
+            if station_cfg.station_type == "stream":
+                return {**base, "now_playing": None}
 
             try:
                 sid = helpers.station_id(con, station)
@@ -88,14 +93,19 @@ def create_api(app: RadioApp) -> FastAPI:
 
         # --- Current tuning state ---
         tuned = base_music_vol > 0 and current_station is not None
+        current_station_type = app.station_cfgs[current_station].station_type if current_station else "regular"
 
         base = {
             "frequency": dial_freq,
             "station": current_station,
+            "station_type": current_station_type,
             "tuned": tuned,
         }
 
         if not tuned:
+            return {**base, "now_playing": None}
+
+        if current_station_type == "stream":
             return {**base, "now_playing": None}
 
         try:
@@ -109,7 +119,10 @@ def create_api(app: RadioApp) -> FastAPI:
     @fastapi_app.get("/stations")
     def stations_list() -> list[dict[str, Any]]:
         """Return all stations sorted by frequency."""
-        return [{"name": name, "frequency": freq} for name, freq in app.sts]
+        return [
+            {"name": name, "frequency": freq, "station_type": app.station_cfgs[name].station_type}
+            for name, freq in app.sts
+        ]
 
     @fastapi_app.get("/status")
     def status(station: Optional[str] = None) -> dict[str, Any]:

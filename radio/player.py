@@ -168,13 +168,20 @@ class Player:
         if not np.path:
             return
 
-        needs_load = (
-            self.current_station != np.station
-            or self.current_kind != np.kind
-            or self.current_path != np.path
-            or self.current_media_id != np.media_id
-            or abs(self.current_started_ts - np.started_ts) > 0.25
-        )
+        if np.kind == "stream":
+            needs_load = (
+                self.current_station != np.station
+                or self.current_kind != np.kind
+                or self.current_path != np.path
+            )
+        else:
+            needs_load = (
+                self.current_station != np.station
+                or self.current_kind != np.kind
+                or self.current_path != np.path
+                or self.current_media_id != np.media_id
+                or abs(self.current_started_ts - np.started_ts) > 0.25
+            )
 
         if needs_load:
             # cancel any ident schedule from previous program

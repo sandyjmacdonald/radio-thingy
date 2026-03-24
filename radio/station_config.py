@@ -115,6 +115,10 @@ class StationConfig:
     name: str
     freq: float
 
+    # Station type: "regular" (scheduled, local files) or "stream" (live internet stream)
+    station_type: str = "regular"
+    stream_url: str = ""
+
     # Directories for station-only media
     idents_dir: str = ""
     commercials_dir: str = ""
@@ -175,6 +179,11 @@ def load_station_toml(path: str) -> StationConfig:
     if freq <= 0:
         raise ValueError(f"{path}: missing/invalid freq")
 
+    station_type = _as_str(data.get("station_type") or "regular").strip().lower()
+    if station_type not in ("regular", "stream"):
+        station_type = "regular"
+    stream_url = _as_str(data.get("stream_url")).strip()
+
     # Support either *_dir or *_dir*s* naming
     idents_dir = _as_str(data.get("idents_dir") or data.get("ident_dir")).strip()
     commercials_dir = _as_str(data.get("commercials_dir") or data.get("commercial_dir")).strip()
@@ -191,6 +200,8 @@ def load_station_toml(path: str) -> StationConfig:
     return StationConfig(
         name=name,
         freq=freq,
+        station_type=station_type,
+        stream_url=stream_url,
         idents_dir=idents_dir,
         commercials_dir=commercials_dir,
         break_frequency_s=break_frequency_s,
