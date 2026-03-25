@@ -16,6 +16,7 @@ freq_max    = 98.0
 step        = 0.1    # MHz per button press
 lock_window = 0.2    # MHz from station centre → full volume
 fade_window = 0.5    # MHz fade zone outside lock_window
+seek_rate   = 0.1    # seconds between each frequency step when seeking
 
 # Overlay (voice-over) defaults — applied globally to all stations
 overlay_pad_s  = 2.0   # seconds into song before overlay fires
@@ -31,7 +32,7 @@ overlay_ramp_s = 0.5   # duck fade in/out duration (seconds)
 
 # Hardware — buttons (optional)
 # Each entry specifies a BCM GPIO pin and the RadioApp method to call on press.
-# Available actions: tune_next_station, toggle_mute
+# Available actions: tune_next_station, toggle_mute, seek
 # buttons = [
 #     { pin = 23, action = "tune_next_station" },   # cycle to the next station
 #     { pin = 24, action = "toggle_mute" },          # mute / unmute

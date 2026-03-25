@@ -129,6 +129,10 @@ class RadioApp:
         self._muted = False
         self._last_vol: int = self.config.master_vol
 
+        # seek state
+        self._seek_stop = threading.Event()
+        self._seek_thread: Optional[threading.Thread] = None
+
         # input devices
         self._inputs = inputs or []
         for inp in self._inputs:
@@ -261,6 +265,54 @@ class RadioApp:
             )
             self._maybe_log_and_play(np)
 
+    def seek(self) -> None:
+        """Seek forward through frequencies, stepping by one dial increment every seek_rate seconds until a station locks."""
+        # Cancel any in-progress seek
+        self._seek_stop.set()
+        if self._seek_thread and self._seek_thread.is_alive():
+            self._seek_thread.join(timeout=1.0)
+        self._seek_stop = threading.Event()
+
+        def _seek_worker(stop_event: threading.Event) -> None:
+            while not stop_event.is_set():
+                with self._lock:
+                    next_freq = self.state.freq + self.config.step
+                    if next_freq > self.config.freq_max:
+                        next_freq = self.config.freq_min
+                    self.state.freq = clamp_freq(next_freq, self.config.freq_min, self.config.freq_max, self.config.step)
+
+                    name, sf = nearest_station(self.state.freq, self.sts, self.mids)
+                    d = abs(self.state.freq - sf)
+                    g = gain_from_delta(d, self.config.lock_window, self.config.fade_window)
+                    self.state.base_music_vol = int(g * 100)
+                    self.player.set_mix(self.state.base_music_vol)
+                    if self._tuning_led:
+                        self._tuning_led.set_brightness(g)
+
+                    if self.state.station_name != name:
+                        self.state.station_name = name
+                        self.state.station_freq = sf
+                        active = self.state.base_music_vol > 0
+                        tuned_cfg = self.station_cfgs[name]
+                        if tuned_cfg.station_type == "stream":
+                            np = self._stream_now_playing(name, tuned_cfg)
+                        else:
+                            np = self.scheduler.ensure_station_current(name, time.time(), active=active)
+                        self._log(
+                            f"{T.CYAN}Seek \u2192 {T.BOLD}{T.BRIGHT_CYAN}{name}{T.RESET}"
+                            f"{T.CYAN} @ {T.MAGENTA}{sf:.1f}{T.CYAN} FM{T.RESET}"
+                        )
+                        self._maybe_log_and_play(np)
+
+                    if g >= 1.0:
+                        stop_event.set()
+                        break
+
+                stop_event.wait(self.config.seek_rate)
+
+        self._seek_thread = threading.Thread(target=_seek_worker, args=(self._seek_stop,), daemon=True)
+        self._seek_thread.start()
+
     def toggle_mute(self) -> None:
         """Toggle mute. Restores to the current potentiometer position or last known volume."""
         if self._muted:
@@ -365,6 +417,7 @@ class RadioApp:
         except KeyboardInterrupt:
             pass
         finally:
+            self._seek_stop.set()
             for inp in self._inputs:
                 try:
                     inp.stop()
