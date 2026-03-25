@@ -267,13 +267,13 @@ class RadioApp:
 
     def seek(self) -> None:
         """Seek forward through frequencies, stepping by one dial increment every seek_rate seconds until a station locks."""
-        # Cancel any in-progress seek
+        # Cancel any in-progress seek; old thread holds its own stop_event and exits on its own
         self._seek_stop.set()
-        if self._seek_thread and self._seek_thread.is_alive():
-            self._seek_thread.join(timeout=1.0)
         self._seek_stop = threading.Event()
 
         def _seek_worker(stop_event: threading.Event) -> None:
+            escaped = False  # True once we've stepped out of the starting station's lock zone
+
             while not stop_event.is_set():
                 with self._lock:
                     next_freq = self.state.freq + self.config.step
@@ -288,6 +288,9 @@ class RadioApp:
                     self.player.set_mix(self.state.base_music_vol)
                     if self._tuning_led:
                         self._tuning_led.set_brightness(g)
+
+                    if not escaped and g < 1.0:
+                        escaped = True
 
                     if self.state.station_name != name:
                         self.state.station_name = name
@@ -304,7 +307,7 @@ class RadioApp:
                         )
                         self._maybe_log_and_play(np)
 
-                    if g >= 1.0:
+                    if escaped and g >= 1.0:
                         stop_event.set()
                         break
 
