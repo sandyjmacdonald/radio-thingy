@@ -23,12 +23,12 @@ class MediaInfo:
 
 # -------------------- Query Helpers --------------------
 
-def one(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> Optional[sqlite3.Row]:
+def get_one(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> Optional[sqlite3.Row]:
     cur = con.execute(sql, params)
     return cur.fetchone()
 
 
-def all_(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
+def get_all(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
     cur = con.execute(sql, params)
     return cur.fetchall()
 
@@ -36,7 +36,7 @@ def all_(con: sqlite3.Connection, sql: str, params: Sequence[Any] = ()) -> list[
 # -------------------- Media and Station Upserts --------------------
 
 def upsert_media(con: sqlite3.Connection, info: MediaInfo) -> int:
-    row = one(con, "SELECT id, mtime FROM media WHERE path=?", (info.path,))
+    row = get_one(con, "SELECT id, mtime FROM media WHERE path=?", (info.path,))
     if row and int(row["mtime"] or 0) == info.mtime:
         return int(row["id"])
 
@@ -54,7 +54,7 @@ def upsert_media(con: sqlite3.Connection, info: MediaInfo) -> int:
         """,
         (info.path, info.kind, info.artist, info.title, info.tag, info.duration_s, info.mtime),
     )
-    r2 = one(con, "SELECT id FROM media WHERE path=?", (info.path,))
+    r2 = get_one(con, "SELECT id FROM media WHERE path=?", (info.path,))
     if not r2:
         raise RuntimeError(f"Failed to upsert media: {info.path}")
     return int(r2["id"])
@@ -93,14 +93,14 @@ def upsert_station(con: sqlite3.Connection, cfg: Any) -> int:
             int(getattr(cfg, "ident_frequency_s", 0) or 0),
         ),
     )
-    row = one(con, "SELECT id FROM stations WHERE name=?", (cfg.name,))
+    row = get_one(con, "SELECT id FROM stations WHERE name=?", (cfg.name,))
     if not row:
         raise RuntimeError(f"Failed to upsert station: {cfg.name}")
     return int(row["id"])
 
 
 def station_id(con: sqlite3.Connection, name: str) -> int:
-    row = one(con, "SELECT id FROM stations WHERE name=?", (name,))
+    row = get_one(con, "SELECT id FROM stations WHERE name=?", (name,))
     if not row:
         raise RuntimeError(f"Station not in DB: {name} (run scan_media first)")
     return int(row["id"])
@@ -115,7 +115,7 @@ def link_station_media(con: sqlite3.Connection, station_id_: int, media_id: int)
 
 def prune_missing_media(con: sqlite3.Connection) -> int:
     """Delete media rows whose files no longer exist on disk. Returns count deleted."""
-    rows = all_(con, "SELECT id, path FROM media")
+    rows = get_all(con, "SELECT id, path FROM media")
     missing_ids = [int(r["id"]) for r in rows if not Path(r["path"]).exists()]
     if missing_ids:
         q = ",".join("?" * len(missing_ids))
@@ -126,7 +126,7 @@ def prune_missing_media(con: sqlite3.Connection) -> int:
 # -------------------- Station Media Queries --------------------
 
 def random_station_media(con: sqlite3.Connection, station_id_: int, kind: str) -> Optional[sqlite3.Row]:
-    return one(
+    return get_one(
         con,
         """
         SELECT m.id, m.path, m.kind, m.duration_s
@@ -141,7 +141,7 @@ def random_station_media(con: sqlite3.Connection, station_id_: int, kind: str) -
 
 
 def station_media_pool(con: sqlite3.Connection, station_id_: int, kind: str, limit: int = 500) -> list[sqlite3.Row]:
-    return all_(
+    return get_all(
         con,
         """
         SELECT m.id, m.path, m.kind, m.duration_s
@@ -156,14 +156,14 @@ def station_media_pool(con: sqlite3.Connection, station_id_: int, kind: str, lim
 
 
 def media_by_id(con: sqlite3.Connection, media_id: int) -> Optional[sqlite3.Row]:
-    return one(con, "SELECT id, path, kind, duration_s FROM media WHERE id=?", (int(media_id),))
+    return get_one(con, "SELECT id, path, kind, duration_s FROM media WHERE id=?", (int(media_id),))
 
 
 def random_station_media_filtered(
     con: sqlite3.Connection, station_id_: int, kind: str, path_prefix: str
 ) -> Optional[sqlite3.Row]:
     """Get a random station media item of the given kind where path starts with path_prefix."""
-    return one(
+    return get_one(
         con,
         """
         SELECT m.id, m.path, m.kind, m.duration_s
@@ -223,7 +223,7 @@ def best_fit_song(con: sqlite3.Connection, tags: list[str], max_duration: float,
 # -------------------- Station State Helpers --------------------
 
 def get_station_state(con: sqlite3.Connection, station_id_: int) -> Optional[sqlite3.Row]:
-    return one(
+    return get_one(
         con,
         """
         SELECT

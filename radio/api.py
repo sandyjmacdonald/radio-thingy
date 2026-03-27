@@ -25,7 +25,7 @@ def _build_now_playing(
 
     media_row: Optional[Any] = None
     if row["current_media_id"] is not None:
-        media_row = helpers.one(
+        media_row = helpers.get_one(
             con,
             "SELECT artist, title FROM media WHERE id=?",
             (int(row["current_media_id"]),),
