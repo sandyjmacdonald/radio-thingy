@@ -1,6 +1,8 @@
 # 💀 deadair 💀
 
-deadair is a Python-based FM radio station emulator that brings the nostalgic experience of classic FM radio to your Raspberry Pi. Tune between multiple stations, each with its own frequency, programming schedule, station identifications, overlays, and commercial breaks. It even mixes in white noise when tuning between stations.
+deadair is a Python-based FM radio station emulator that brings the nostalgic experience of classic FM radio to your Raspberry Pi. Tune between multiple stations, each with its own frequency, programming schedule, station identifications, overlays, and commercial breaks. It even mixes in white noise when tuning between stations for that authentic old radio feel. Use it to bring a beautiful, old radio back to life, in the way that you remember.
+
+deadair encourages you to own your music — pay your favourite artists for their music and then listen by your rules. Collect together all your favourite songs and then have them play back randomly, no skipping songs, just let fate decide what comes on next. Turn on and tune in.
 
 ## Features
 
@@ -8,6 +10,7 @@ deadair is a Python-based FM radio station emulator that brings the nostalgic ex
 - Configure multiple stations, each with unique names or call signs and FM frequencies
 - Realistic static/noise when tuning between stations
 - Independent programming and schedules per station
+- Also supports internet radio station streams
 
 ### 📅 Flexible Scheduling
 - 24/7 programming schedules with hourly granularity
