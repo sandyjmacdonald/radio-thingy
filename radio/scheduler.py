@@ -90,6 +90,10 @@ class Scheduler:
         for name in station_cfgs.keys():
             helpers.station_id(con, name)
 
+        # Timestamp when this Scheduler instance was created.  Used to distinguish
+        # DB state written in this session from stale state left by a previous run.
+        self._session_start_ts: float = time.time()
+
         # Per-station RNG (de-sync stations even with identical libraries)
         self._rng: dict[str, random.Random] = {}
         run_entropy = int(time.time() * 1000)
@@ -131,7 +135,9 @@ class Scheduler:
         if not tags:
             if cfg.off_air_file:
                 st = helpers.get_station_state(self.con, sid)
-                if st and str(st["kind"] or "") == "off_air" and float(st["ends_ts"] or 0.0) > now_ts:
+                if (st and str(st["kind"] or "") == "off_air"
+                        and float(st["ends_ts"] or 0.0) > now_ts
+                        and float(st["started_ts"] or 0.0) >= self._session_start_ts):
                     return NowPlaying(
                         station=station_name,
                         kind="off_air",
@@ -176,7 +182,8 @@ class Scheduler:
         if st:
             kind = str(st["kind"] or "")
             ends = float(st["ends_ts"] or 0.0)
-            if kind and kind != "noise" and ends > now_ts and st["path"]:
+            if (kind and kind != "noise" and ends > now_ts and st["path"]
+                    and float(st["started_ts"] or 0.0) >= self._session_start_ts):
                 started = float(st["started_ts"] or now_ts)
                 seek = max(0.0, now_ts - started)
 
