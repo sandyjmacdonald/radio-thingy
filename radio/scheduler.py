@@ -129,6 +129,33 @@ class Scheduler:
         slot_end_ts = self._next_slot_start_ts(now_ts)
 
         if not tags:
+            if cfg.off_air_file:
+                st = helpers.get_station_state(self.con, sid)
+                if st and str(st["kind"] or "") == "off_air" and float(st["ends_ts"] or 0.0) > now_ts:
+                    return NowPlaying(
+                        station=station_name,
+                        kind="off_air",
+                        path=cfg.off_air_file,
+                        media_id=None,
+                        started_ts=float(st["started_ts"] or now_ts),
+                        ends_ts=float(st["ends_ts"]),
+                        seek_s=0.0,
+                        slot_end_ts=slot_end_ts,
+                        ident_overlay=None,
+                    )
+                helpers.set_off_air_state(self.con, sid, now_ts, slot_end_ts)
+                self.con.commit()
+                return NowPlaying(
+                    station=station_name,
+                    kind="off_air",
+                    path=cfg.off_air_file,
+                    media_id=None,
+                    started_ts=now_ts,
+                    ends_ts=slot_end_ts,
+                    seek_s=0.0,
+                    slot_end_ts=slot_end_ts,
+                    ident_overlay=None,
+                )
             helpers.set_noise_state(self.con, sid, now_ts, slot_end_ts)
             self.con.commit()
             return NowPlaying(

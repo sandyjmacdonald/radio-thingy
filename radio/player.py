@@ -202,6 +202,9 @@ class Player:
             self.current_media_id = np.media_id
             self.current_started_ts = np.started_ts
 
+            # Off-air files loop continuously; all other program content does not
+            self.music.loop_file = "inf" if np.kind == "off_air" else "no"
+
             # Replace the current file in the SAME mpv instance (no new threads)
             self.music.command("loadfile", np.path, "replace")
 

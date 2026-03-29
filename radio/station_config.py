@@ -152,6 +152,9 @@ class StationConfig:
     # Top-of-the-hour jingle directory
     top_of_the_hour: str = ""
 
+    # Off-air file: looped when no schedule entry exists for the current hour
+    off_air_file: str = ""
+
     # Schedule: day -> hour(int 0-23) -> ScheduleEntry
     schedule: dict[str, dict[int, ScheduleEntry]] = field(default_factory=dict)
 
@@ -214,6 +217,7 @@ def load_station_toml(path: str) -> StationConfig:
     ident_frequency_s = _as_int(data.get("ident_frequency_s") or data.get("ident_frequency") or 0, 0)
 
     top_of_the_hour = _as_str(data.get("top_of_the_hour")).strip()
+    off_air_file = _as_str(data.get("off_air_file")).strip()
     templates = data.get("day_templates") or {}
     schedule = _normalize_schedule(data.get("schedule"), templates=templates)
 
@@ -228,5 +232,6 @@ def load_station_toml(path: str) -> StationConfig:
         break_length_s=break_length_s,
         ident_frequency_s=ident_frequency_s,
         top_of_the_hour=top_of_the_hour,
+        off_air_file=off_air_file,
         schedule=schedule,
     )

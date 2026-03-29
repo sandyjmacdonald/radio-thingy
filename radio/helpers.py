@@ -277,6 +277,27 @@ def set_noise_state(con: sqlite3.Connection, station_id_: int, now_ts: float, en
     )
 
 
+def set_off_air_state(con: sqlite3.Connection, station_id_: int, now_ts: float, ends_ts: float) -> None:
+    """Write an off_air state record for the station, clearing any queued media."""
+    con.execute(
+        """
+        INSERT INTO station_state(
+          station_id, current_media_id, kind, started_ts, ends_ts,
+          queue_json, queue_index
+        )
+        VALUES(?,?,?,?,?,?,?)
+        ON CONFLICT(station_id) DO UPDATE SET
+          current_media_id=NULL,
+          kind='off_air',
+          started_ts=excluded.started_ts,
+          ends_ts=excluded.ends_ts,
+          queue_json=NULL,
+          queue_index=0
+        """,
+        (int(station_id_), None, "off_air", float(now_ts), float(ends_ts), None, 0),
+    )
+
+
 def set_station_state(
     con: sqlite3.Connection,
     *,

@@ -57,6 +57,11 @@ deadair encourages you to own your music — pay your favourite artists for thei
 - Brightness tracks the same gain curve used for audio, so the LED and sound fade in together
 - Configured in `config.toml` via `tuning_led_pin` and `led_brightness`
 
+### 📴 Off-Air Programming
+- Configure a looping MP3 that plays whenever a station has no schedule entry for the current hour
+- Set per-station in the station TOML — each station can have its own off-air audio
+- Falls back to static noise if no off-air file is configured
+
 ### 🔧 Smart Scheduler
 - Intelligent song selection based on duration to fit time slots
 - Avoids playing the same song on multiple stations simultaneously, or the same song too frequently
@@ -199,6 +204,7 @@ freq = 99.9
 idents_dir = "/path/to/media/idents/MYCALL"
 commercials_dir = "/path/to/media/commercials/MYCALL"
 top_of_the_hour = "/path/to/media/toth/MYCALL"
+off_air_file = "/path/to/media/off_air/MYCALL.mp3"
 
 break_frequency_s = 900    # Commercial break every 15 minutes
 break_length_s = 60        # 60-second breaks
@@ -399,7 +405,7 @@ curl http://localhost:8000/status
 | `station_type` | `"regular"` or `"stream"` |
 | `tuned` | `true` when the dial is close enough to a station to hear it |
 | `now_playing` | `null` when not tuned; `{"type": "noise"}` when tuned to static; full object when playing |
-| `type` | One of: `song`, `overlay`, `ident`, `commercial`, `top_of_hour`, `noise` |
+| `type` | One of: `song`, `overlay`, `ident`, `commercial`, `top_of_hour`, `off_air`, `noise` |
 | `elapsed_s` | Seconds since the current track started, computed at request time |
 
 **Optional `?station=` parameter**
@@ -484,7 +490,21 @@ sunday    = "weekend"
 17 = { tags = ["pop", "dance"], overlays = "/path/to/overlays/weekend", overlays_probability = 0.6 }
 ```
 
-Days assigned to a template and days defined as subtables can be freely mixed. Any day whose name is not mentioned is treated as having no programming (noise only).
+Days assigned to a template and days defined as subtables can be freely mixed. Any day whose name is not mentioned is treated as having no programming (off-air or noise).
+
+### Off-Air Programming
+
+When a station has no schedule entry for the current hour — whether because the day is unscheduled, or because no entry covers that hour — it can loop a dedicated off-air MP3 instead of falling back to static noise.
+
+Set `off_air_file` in the station TOML to the path of an MP3 to loop:
+
+```toml
+off_air_file = "/path/to/media/off_air/MYCALL.mp3"
+```
+
+The file loops continuously for the duration of the unscheduled hour. At the top of the next hour the scheduler re-evaluates: if programming resumes, playback switches to normal songs; if the hour is still unscheduled, the off-air file restarts.
+
+If `off_air_file` is not set, the station falls back to the global static noise file (the existing default behaviour).
 
 ### Station Idents
 

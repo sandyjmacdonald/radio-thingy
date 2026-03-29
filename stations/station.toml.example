@@ -50,6 +50,14 @@ ident_frequency_s = 180
 # top_of_the_hour = "/path/to/media/toth/MYCALL"
 
 # ============================================================================
+# OFF-AIR FILE
+# ============================================================================
+
+# MP3 file to loop when the station has no schedule entry for the current hour (optional)
+# If omitted, the station falls back to the global static noise file
+# off_air_file = "/path/to/media/off_air/MYCALL.mp3"
+
+# ============================================================================
 # PROGRAMMING SCHEDULE
 # ============================================================================
 # Format: hour = { tags = "genre" } or { tags = ["genre1", "genre2"] }
